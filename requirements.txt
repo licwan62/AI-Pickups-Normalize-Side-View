@@ -1,0 +1,9 @@
+pandas
+opencv-python
+Pillow
+numpy
+svgwrite
+cairosvg
+streamlit
+pyyaml
+pytest

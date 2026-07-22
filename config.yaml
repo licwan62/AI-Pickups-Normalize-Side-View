@@ -1,0 +1,20 @@
+input_tsv: input/vehicles.tsv
+images_dir: input/images
+output_dir: output
+output:
+  embed_source_directly: true
+annotation:
+  background_color: "#FFFFFF"
+  image_opacity: 0.50
+  outline_color: "#C8242A"
+  outline_width_mm: 8
+  dimension_color: "#202124"
+  dimension_width_mm: 4
+  font_size_mm: 82
+  font_family: "Arial"
+detection:
+  mode: automatic
+  manual_fallback: true
+quality:
+  pass_max_percent: 3
+  warning_max_percent: 6
