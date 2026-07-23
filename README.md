@@ -19,8 +19,8 @@ python -m pip install -r requirements.txt
 默认输入文件为 `input/vehicles.tsv`，使用 Tab 分隔，编码建议为 UTF-8：
 
 ```tsv
-id	name	image_path	length_mm	width_mm	height_mm
-F150_01	Ford F150 Raptor		5908	2200	2027
+id	name	Size	image_path	length_mm	width_mm	height_mm
+F150_01	Ford F150 Raptor	PK-XL		5908	2200	2027
 ```
 
 字段说明：
@@ -29,6 +29,7 @@ F150_01	Ford F150 Raptor		5908	2200	2027
 | --- | --- | --- |
 | `id` | 是 | 车辆唯一 ID，也用于查找默认图片文件名 |
 | `name` | 是 | 汇总表中的车型名称 |
+| `Size` | 是 | 输出分类目录，例如 `PK-XL`、`YL`、`YM+` |
 | `image_path` | 否 | 图片路径；填写后优先读取此路径 |
 | `length_mm` | 是 | 车辆总长，单位 mm |
 | `width_mm` | 是 | 车辆总宽，单位 mm |
@@ -74,39 +75,46 @@ python main.py --input data\vehicles.tsv --images data\images --output result
 python main.py --manual
 ```
 
-## 4. 比例质检与警告复核
+## 4. 比例质检
 
 程序比较图片裁剪区域的长高比和车辆真实长高比：
 
 - 误差不超过 3%：自动导出。
-- 误差大于 3% 且不超过 6%：状态为 `WARNING`，暂停 SVG 导出。
-- 误差大于 6%：状态为 `BLOCKED`，禁止导出。
+- 误差大于 3% 且不超过 `error_max_percent`：状态为 `WARNING`，记录警告后继续尺寸识别和 SVG 导出。
+- 误差大于 `warning_max_percent` 时，`qc_report.json` 额外记录 `warning_limit_exceeded: true`。
+- 误差大于 `error_max_percent`：状态为 `BLOCKED`，暂停尺寸识别和导出。
 
-遇到 `WARNING` 时，先检查对应的 `output/<id>/points.json` 和 `qc_report.json`。确认边界正确后，可批准该警告并复用边界：
+阈值在 `config.yaml` 中配置：
 
-```powershell
-python main.py --reuse-points --approve-warning
+```yaml
+quality:
+  pass_max_percent: 3
+  warning_max_percent: 15
+  error_max_percent: 20
 ```
 
 ## 5. 输出文件
 
-每辆车的过程文件保存在 `output/<id>/`：
+每辆车的最终标注 SVG 以 ID 命名，直接保存在 Size 目录；过程文件保存在对应的 ID 子目录：
 
 ```text
-output/F150_01/
-├── source.jpg
-├── crop_source.png
-├── vehicle.svg
-├── annotated.svg
-├── points.json
-├── annotation_points.json
-├── qc_report.json
-└── measurements.tsv
+output/PK-XL/
+├── F150_01.svg
+└── F150_01/
+    ├── source.jpg
+    ├── crop_source.png
+    ├── orientation.json
+    ├── vehicle.svg
+    ├── points.json
+    ├── annotation_points.json
+    ├── qc_report.json
+    └── measurements.tsv
 ```
 
 - `vehicle.svg`：仅包含按真实车长、车高缩放的车辆图片。
-- `annotated.svg`：白底、50% 透明车辆图、红色结构线框和外置尺寸标注。
+- `<id>.svg`：Size 目录下的最终交付文件；包含白底、50% 透明车辆图、红色结构线框和外置尺寸标注。
 - `crop_source.png`：紧密裁剪的原始像素，仅作为 SVG 内嵌图源，不需要单独导入工程。
+- `orientation.json`：车头方向识别结果、置信度、翻转状态及各项判断分数。车头在左时，`crop_source.png` 会水平翻转为车头朝右后再进入尺寸识别。
 - `points.json`：自动或人工确定的裁剪边界。
 - `annotation_points.json`：轮廓、底盘线、车门线等自动测量坐标，内部单位为 mm。
 - `measurements.tsv`：单车详细测量结果。
@@ -130,9 +138,9 @@ output/
 
 ## 6. Illustrator 导入说明
 
-请导入 `vehicle.svg` 或 `annotated.svg`，不要把 `crop_source.png` 作为最终工程图导入。SVG 的 `width`、`height` 和 `viewBox` 使用毫米定义，因此 Illustrator 中的物理车长和车高以 TSV 数据为准，与栅格图的 PPI 无关。
+请导入 Size 目录下的 `<id>.svg`，或过程目录中的 `vehicle.svg`；不要把 `crop_source.png` 作为最终工程图导入。SVG 的 `width`、`height` 和 `viewBox` 使用毫米定义，因此 Illustrator 中的物理车长和车高以 TSV 数据为准，与栅格图的 PPI 无关。
 
-`annotated.svg` 为了把总长、总高和局部尺寸线放到车辆两侧，画板会比车辆本体更大；车辆本体的尺寸仍然严格等于 TSV 中的 `length_mm × height_mm`。
+Size 目录下的 `<id>.svg` 为了把总长、总高和局部尺寸线放到车辆两侧，画板会比车辆本体更大；车辆本体的尺寸仍然严格等于 TSV 中的 `length_mm × height_mm`。
 
 ## 7. 调整标注样式
 

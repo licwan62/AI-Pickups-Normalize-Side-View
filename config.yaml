@@ -17,4 +17,5 @@ detection:
   manual_fallback: true
 quality:
   pass_max_percent: 3
-  warning_max_percent: 6
+  warning_max_percent: 15
+  error_max_percent: 20

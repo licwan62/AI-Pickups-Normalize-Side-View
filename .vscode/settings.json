@@ -1,5 +1,6 @@
 {
     "powerquery.client.additionalSymbolsDirectories": [
-        "d:/Home/Scripts/AI Pickups Normalize Side View/.vscode/excel-pq-symbols"
+        "d:/Home/Scripts/AI Pickups Normalize Side View/.vscode/excel-pq-symbols",
+        "d:/Licheng/Repo/AI-Pickups-Normalize-Side-View/.vscode/excel-pq-symbols"
     ]
 }

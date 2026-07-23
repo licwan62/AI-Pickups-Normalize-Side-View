@@ -13,10 +13,11 @@ from .src.exporter import Exporter
 from .src.detector import OpenCVVehicleDetector
 from .src.geometry import Bounds, select_bounds
 from .src.loader import VehicleRecord, load_image, load_records
+from .src.orientation import normalize_front_to_right
 from .src.quality import QCStatus, evaluate_ratio
 from .src.renderer import render_annotated_svg, render_vehicle_svg
 from .src.scaler import ScaleMapping
-from .src.settings import AnnotationStyle, load_settings
+from .src.settings import AnnotationStyle, QualitySettings, load_settings
 
 
 LOGGER = logging.getLogger("pickup_measure")
@@ -41,13 +42,24 @@ def process_vehicle(
     reuse_points: bool = False,
     ppi: float = 72.0,
     annotation_style: AnnotationStyle = AnnotationStyle(),
+    quality_settings: QualitySettings = QualitySettings(),
 ) -> str:
-    output_dir = output_root / record.id
+    size_output_dir = output_root / record.size
+    output_dir = size_output_dir / record.id
     exporter = Exporter(output_dir)
     # A blocked or failed rerun must not leave a stale SVG that looks current.
     vehicle_svg = output_dir / "vehicle.svg"
+    annotated_svg = size_output_dir / f"{record.id}.svg"
     vehicle_svg.unlink(missing_ok=True)
-    for stale_name in ("annotated.svg", "annotated.pdf", "preview.png", "annotation_points.json", "measurements.tsv"):
+    annotated_svg.unlink(missing_ok=True)
+    for stale_name in (
+        "annotated.svg",
+        "annotated.pdf",
+        "preview.png",
+        "annotation_points.json",
+        "orientation.json",
+        "measurements.tsv",
+    ):
         (output_dir / stale_name).unlink(missing_ok=True)
     final_crop_path = output_dir / "crop.png"
     final_crop_path.unlink(missing_ok=True)
@@ -68,7 +80,26 @@ def process_vehicle(
         LOGGER.info("%s: automatically detected and saved bounds to %s", record.id, points_path)
 
     bounds.validate(image.width, image.height)
-    crop = image.crop(bounds.as_pillow_box())
+    raw_crop = image.crop(bounds.as_pillow_box())
+    crop, orientation = normalize_front_to_right(raw_crop)
+    exporter.write_json("orientation.json", orientation.payload())
+    if orientation.flipped:
+        LOGGER.info(
+            "%s: detected front on the left (confidence %.2f); flipped to face right",
+            record.id,
+            orientation.confidence,
+        )
+    elif orientation.detected_front == "unknown":
+        LOGGER.warning(
+            "%s: vehicle direction confidence is too low; crop was not flipped",
+            record.id,
+        )
+    else:
+        LOGGER.info(
+            "%s: detected front on the right (confidence %.2f)",
+            record.id,
+            orientation.confidence,
+        )
     exporter.save_source_crop(crop)
 
     mapping = ScaleMapping.from_dimensions(
@@ -83,26 +114,35 @@ def process_vehicle(
         source_height=bounds.pixel_height,
         length_mm=record.length_mm,
         height_mm=record.height_mm,
+        pass_max_percent=quality_settings.pass_max_percent,
+        warning_max_percent=quality_settings.warning_max_percent,
+        error_max_percent=quality_settings.error_max_percent,
     )
     qc_payload = {
         **asdict(qc),
         "distortion_percent": round(qc.distortion * 100, 4),
+        "pass_max_percent": quality_settings.pass_max_percent,
+        "warning_max_percent": quality_settings.warning_max_percent,
+        "error_max_percent": quality_settings.error_max_percent,
+        "warning_limit_exceeded": (
+            qc.distortion * 100 > quality_settings.warning_max_percent
+        ),
         "scale_x_mm_per_px": mapping.scale_x,
         "scale_y_mm_per_px": mapping.scale_y,
         "warning_approved": bool(qc.status is QCStatus.WARNING and approve_warning),
+        "warning_auto_continued": qc.status is QCStatus.WARNING,
     }
     exporter.write_json("qc_report.json", qc_payload)
 
     if qc.status is QCStatus.BLOCKED:
         LOGGER.error("%s: blocked (ratio distortion %.2f%%)", record.id, qc.distortion * 100)
         return "BLOCKED"
-    if qc.status is QCStatus.WARNING and not approve_warning:
+    if qc.status is QCStatus.WARNING:
         LOGGER.warning(
-            "%s: warning (ratio distortion %.2f%%); export paused. Review and rerun with --approve-warning.",
+            "%s: warning (ratio distortion %.2f%%); continuing to dimension annotation.",
             record.id,
             qc.distortion * 100,
         )
-        return "WARNING"
 
     render_vehicle_svg(
         image=crop,
@@ -115,7 +155,7 @@ def process_vehicle(
     render_annotated_svg(
         image=crop,
         geometry=annotation,
-        output_path=output_dir / "annotated.svg",
+        output_path=annotated_svg,
         width_mm=record.length_mm,
         height_mm=record.height_mm,
         style=annotation_style,
@@ -135,8 +175,9 @@ def process_vehicle(
         "qc_status": qc.status.value,
     })
     LOGGER.info(
-        "%s: exported vehicle.svg and annotated.svg at %.1f mm x %.1f mm",
+        "%s: exported vehicle.svg and %s at %.1f mm x %.1f mm",
         record.id,
+        annotated_svg,
         record.length_mm,
         record.height_mm,
     )
@@ -167,7 +208,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--approve-warning",
         action="store_true",
-        help="Export 3%%-6%% distortion warnings after human review",
+        help="Deprecated compatibility flag; warnings now continue automatically",
     )
     parser.add_argument("--verbose", action="store_true")
     return parser
@@ -194,11 +235,22 @@ def main(argv: list[str] | None = None) -> int:
                 reuse_points=args.reuse_points,
                 ppi=settings.output.ppi,
                 annotation_style=settings.annotation,
+                quality_settings=settings.quality,
             )
-            summary.append({"id": record.id, "status": status, "error": ""})
+            summary.append({
+                "id": record.id,
+                "size": record.size,
+                "status": status,
+                "error": "",
+            })
         except Exception as exc:
             LOGGER.exception("%s: processing failed", record.id)
-            summary.append({"id": record.id, "status": "FAILED", "error": str(exc)})
+            summary.append({
+                "id": record.id,
+                "size": record.size,
+                "status": "FAILED",
+                "error": str(exc),
+            })
 
     args.output.mkdir(parents=True, exist_ok=True)
     (args.output / "run_summary.json").write_text(
@@ -215,7 +267,12 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             record = record_by_id[item["id"]]
             annotation_payload = json.loads(
-                (args.output / record.id / "annotation_points.json").read_text(encoding="utf-8")
+                (
+                    args.output
+                    / record.size
+                    / record.id
+                    / "annotation_points.json"
+                ).read_text(encoding="utf-8")
             )
             writer.writerow({
                 "车型": record.name,

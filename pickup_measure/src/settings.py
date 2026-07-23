@@ -12,6 +12,13 @@ class OutputSettings:
 
 
 @dataclass(frozen=True)
+class QualitySettings:
+    pass_max_percent: float = 3.0
+    warning_max_percent: float = 6.0
+    error_max_percent: float = 6.0
+
+
+@dataclass(frozen=True)
 class AnnotationStyle:
     background_color: str = "#FFFFFF"
     image_opacity: float = 0.5
@@ -27,6 +34,7 @@ class AnnotationStyle:
 class Settings:
     output: OutputSettings = OutputSettings()
     annotation: AnnotationStyle = AnnotationStyle()
+    quality: QualitySettings = QualitySettings()
 
 
 def load_settings(path: Path) -> Settings:
@@ -52,4 +60,32 @@ def load_settings(path: Path) -> Settings:
         raise ValueError("annotation.image_opacity must be between 0 and 1")
     if min(annotation.outline_width_mm, annotation.dimension_width_mm, annotation.font_size_mm) <= 0:
         raise ValueError("annotation widths and font size must be positive")
-    return Settings(output=OutputSettings(ppi=ppi), annotation=annotation)
+    quality_payload = payload.get("quality") or {}
+    pass_max_percent = float(quality_payload.get("pass_max_percent", 3.0))
+    warning_max_percent = float(quality_payload.get("warning_max_percent", 6.0))
+    # Older configurations used warning_max_percent as the blocking threshold.
+    error_max_percent = float(
+        quality_payload.get("error_max_percent", warning_max_percent)
+    )
+    quality = QualitySettings(
+        pass_max_percent=pass_max_percent,
+        warning_max_percent=warning_max_percent,
+        error_max_percent=error_max_percent,
+    )
+    if quality.pass_max_percent < 0:
+        raise ValueError("quality.pass_max_percent must not be negative")
+    if quality.warning_max_percent < quality.pass_max_percent:
+        raise ValueError(
+            "quality.warning_max_percent must be greater than or equal to "
+            "quality.pass_max_percent"
+        )
+    if quality.error_max_percent < quality.warning_max_percent:
+        raise ValueError(
+            "quality.error_max_percent must be greater than or equal to "
+            "quality.warning_max_percent"
+        )
+    return Settings(
+        output=OutputSettings(ppi=ppi),
+        annotation=annotation,
+        quality=quality,
+    )

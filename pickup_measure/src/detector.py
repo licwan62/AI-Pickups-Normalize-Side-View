@@ -25,6 +25,83 @@ class OpenCVVehicleDetector(VehicleDetector):
         self.max_working_size = max_working_size
         self.iterations = iterations
 
+    @staticmethod
+    def _wheel_contact_ground(
+        grayscale: np.ndarray,
+        edges: np.ndarray,
+        roof: int,
+        detected_ground: int,
+    ) -> int | None:
+        """Infer the tyre contact row from a plausible pair of circular wheels."""
+        height, width = grayscale.shape
+        blurred = cv2.GaussianBlur(grayscale, (7, 7), 1.5)
+        circles = cv2.HoughCircles(
+            blurred,
+            cv2.HOUGH_GRADIENT,
+            dp=1.2,
+            minDist=width * 0.2,
+            param1=100,
+            param2=35,
+            minRadius=max(8, round(height * 0.04)),
+            maxRadius=max(10, round(height * 0.25)),
+        )
+        if circles is None:
+            return None
+
+        box_height = detected_ground - roof
+        candidates = [
+            tuple(int(value) for value in circle)
+            for circle in np.round(circles[0]).astype(int)
+            if circle[1] >= roof + box_height * 0.45
+        ]
+        pairs: list[tuple[float, tuple[int, int, int], tuple[int, int, int]]] = []
+        for index, first in enumerate(candidates):
+            for second in candidates[index + 1:]:
+                left, right = sorted((first, second), key=lambda circle: circle[0])
+                separation = right[0] - left[0]
+                largest_radius = max(left[2], right[2])
+                if not width * 0.25 <= separation <= width * 0.85:
+                    continue
+                if abs(left[2] - right[2]) > largest_radius * 0.5:
+                    continue
+                if abs(left[1] - right[1]) > largest_radius * 0.4:
+                    continue
+                score = (
+                    separation
+                    - abs(left[2] - right[2]) * 2
+                    - abs(left[1] - right[1]) * 2
+                )
+                pairs.append((score, left, right))
+        if not pairs:
+            return None
+
+        _, left_wheel, right_wheel = max(pairs, key=lambda item: item[0])
+        contact_rows: list[int] = []
+        for center_x, center_y, radius in (left_wheel, right_wheel):
+            zone_left = max(0, round(center_x - radius * 1.1))
+            zone_right = min(width, round(center_x + radius * 1.1))
+            # Hough can lock onto the bright rim instead of the outer tyre. Search
+            # as far as two detected radii and use the last sustained dark tyre row.
+            search_bottom = min(height, round(center_y + radius * 2.0))
+            dark_counts = np.count_nonzero(
+                grayscale[center_y:search_bottom, zone_left:zone_right] < 100,
+                axis=1,
+            )
+            active_rows = np.flatnonzero(dark_counts >= max(4, round(radius * 0.2)))
+            if not active_rows.size:
+                edge_counts = np.count_nonzero(
+                    edges[center_y:search_bottom, zone_left:zone_right],
+                    axis=1,
+                )
+                active_rows = np.flatnonzero(
+                    edge_counts >= max(4, round(radius * 0.08))
+                )
+            if active_rows.size:
+                contact_rows.append(center_y + int(active_rows[-1]) + 1)
+        if len(contact_rows) != 2:
+            return None
+        return min(height, round(float(np.median(contact_rows))))
+
     def detect(self, image: Image.Image) -> Bounds:
         rgb = np.asarray(image.convert("RGB"))
         original_height, original_width = rgb.shape[:2]
@@ -106,17 +183,55 @@ class OpenCVVehicleDetector(VehicleDetector):
         _, best_label = max(candidates)
         selected = np.where(labels == best_label, 255, 0).astype(np.uint8)
         x, y, box_width, box_height = cv2.boundingRect(selected)
+        initial_span_ratio = box_width / width
 
-        # Ground shadows often connect to the tyres and can span almost the full canvas.
-        # Preserve the vertical result, but infer left/right from the upper 88% of the
-        # detected object where bumpers and body panels live.
+        grayscale = cv2.cvtColor(working, cv2.COLOR_RGB2GRAY)
+        edges = cv2.Canny(grayscale, 50, 140)
+
+        # A pair of wheels gives a stronger ground cue than the foreground mask:
+        # it trims broad studio shadows and recovers dark tyres on black backgrounds.
+        wheel_ground = self._wheel_contact_ground(
+            grayscale,
+            edges,
+            roof=y,
+            detected_ground=y + box_height,
+        )
+        if wheel_ground is not None and wheel_ground > y:
+            box_height = wheel_ground - y
+
+        # Shadows and gradient floors can be selected across the whole canvas.
+        # Re-project stable vehicle edges through the body band to recover tight
+        # bumper-to-bumper bounds without relying on foreground fill colour.
         body_band_bottom = y + max(1, round(box_height * 0.88))
-        column_counts = np.count_nonzero(selected[y:body_band_bottom, :], axis=0)
-        minimum_column_pixels = max(3, round(box_height * 0.012))
+        body_band = edges[y:body_band_bottom, :]
+        column_counts = np.count_nonzero(body_band, axis=0)
+        side_width = max(1, round(width * 0.05))
+        side_edge_density = float(np.mean(np.concatenate(
+            (edges[:, :side_width].reshape(-1), edges[:, -side_width:].reshape(-1))
+        ) > 0))
+        complex_full_width_scene = (
+            initial_span_ratio > 0.9 and side_edge_density > 0.05
+        )
+        projection_fraction = 0.10 if complex_full_width_scene else 0.02
+        minimum_column_pixels = max(
+            4,
+            round(body_band.shape[0] * projection_fraction),
+        )
         active_columns = np.flatnonzero(column_counts >= minimum_column_pixels)
         if active_columns.size >= 2:
-            projected_left = int(active_columns[0])
-            projected_right = int(active_columns[-1] + 1)
+            if complex_full_width_scene and active_columns.size >= 20:
+                padding = round(width * 0.02)
+                projected_left = max(
+                    0,
+                    int(np.quantile(active_columns, 0.01)) - padding,
+                )
+                projected_right = min(
+                    width,
+                    int(np.quantile(active_columns, 0.99)) + padding + 1,
+                )
+            else:
+                projected_left = int(active_columns[0])
+                projected_right = int(active_columns[-1] + 1)
             if projected_right - projected_left >= width * 0.2:
                 x = projected_left
                 box_width = projected_right - projected_left
@@ -124,7 +239,6 @@ class OpenCVVehicleDetector(VehicleDetector):
         # Place the crop's ground edge on the lowest tyre contact pixel. The two
         # side zones cover the usual rear/front wheel positions while excluding
         # most of a broad centre shadow.
-        grayscale = cv2.cvtColor(working, cv2.COLOR_RGB2GRAY)
         wheel_zones = (
             (x + round(box_width * 0.08), x + round(box_width * 0.40)),
             (x + round(box_width * 0.60), x + round(box_width * 0.92)),
@@ -140,13 +254,16 @@ class OpenCVVehicleDetector(VehicleDetector):
             contact_rows = np.flatnonzero(dark_counts >= minimum_tyre_pixels)
             if contact_rows.size:
                 tyre_bottom_rows.append(tyre_search_top + int(contact_rows[-1]) + 1)
-        if tyre_bottom_rows:
+        if tyre_bottom_rows and wheel_ground is None:
             tyre_ground = max(tyre_bottom_rows)
             maximum_safe_trim = round(box_height * 0.06)
             if 0 <= y + box_height - tyre_ground <= maximum_safe_trim:
                 box_height = tyre_ground - y
 
-        fill_ratio = stats[best_label, cv2.CC_STAT_AREA] / (box_width * box_height)
+        selected_area = np.count_nonzero(
+            selected[y:y + box_height, x:x + box_width]
+        )
+        fill_ratio = selected_area / (box_width * box_height)
         box_area_ratio = box_width * box_height / image_area
         aspect = box_width / max(box_height, 1)
         if box_area_ratio > 0.92 or fill_ratio > 0.92 or aspect < 1.2:

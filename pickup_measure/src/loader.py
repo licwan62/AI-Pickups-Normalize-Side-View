@@ -9,8 +9,9 @@ from PIL import Image, ImageOps
 
 
 SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
-REQUIRED_COLUMNS = {"id", "name", "length_mm", "width_mm", "height_mm"}
+REQUIRED_COLUMNS = {"id", "name", "Size", "length_mm", "width_mm", "height_mm"}
 SAFE_ID = re.compile(r"^[A-Za-z0-9_.-]+$")
+SAFE_SIZE = re.compile(r"^[A-Za-z0-9+_.-]+$")
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,7 @@ class VehicleRecord:
     length_mm: float
     width_mm: float
     height_mm: float
+    size: str = "UNCLASSIFIED"
 
 
 def _resolve_image_path(raw_path: str, tsv_path: Path) -> Path:
@@ -53,7 +55,11 @@ def _find_image_by_id(vehicle_id: str, images_dir: Path) -> Path:
 def load_records(tsv_path: Path, images_dir: Path | None = None) -> list[VehicleRecord]:
     tsv_path = tsv_path.resolve()
     separator = "," if tsv_path.suffix.lower() == ".csv" else "\t"
-    frame = pd.read_csv(tsv_path, sep=separator, dtype={"id": str, "name": str, "image_path": str})
+    frame = pd.read_csv(
+        tsv_path,
+        sep=separator,
+        dtype={"id": str, "name": str, "Size": str, "image_path": str},
+    )
     missing = REQUIRED_COLUMNS - set(frame.columns)
     if missing:
         raise ValueError(f"Missing required TSV columns: {', '.join(sorted(missing))}")
@@ -69,6 +75,15 @@ def load_records(tsv_path: Path, images_dir: Path | None = None) -> list[Vehicle
             vehicle_id = str(row["id"]).strip()
             if not vehicle_id or vehicle_id in {".", ".."} or not SAFE_ID.fullmatch(vehicle_id):
                 raise ValueError("id may contain only letters, numbers, dot, underscore, and hyphen")
+            vehicle_size = str(row["Size"]).strip()
+            if (
+                not vehicle_size
+                or vehicle_size in {".", ".."}
+                or not SAFE_SIZE.fullmatch(vehicle_size)
+            ):
+                raise ValueError(
+                    "Size may contain only letters, numbers, plus, dot, underscore, and hyphen"
+                )
             dimensions = [float(row[key]) for key in ("length_mm", "width_mm", "height_mm")]
             if any(value <= 0 for value in dimensions):
                 raise ValueError("dimensions must be positive")
@@ -93,6 +108,7 @@ def load_records(tsv_path: Path, images_dir: Path | None = None) -> list[Vehicle
                     length_mm=dimensions[0],
                     width_mm=dimensions[1],
                     height_mm=dimensions[2],
+                    size=vehicle_size,
                 )
             )
         except Exception as exc:
@@ -105,7 +121,7 @@ def load_image(path: Path) -> Image.Image:
         raise FileNotFoundError(f"Image not found: {path}")
     with Image.open(path) as opened:
         corrected = ImageOps.exif_transpose(opened)
-        if "A" in corrected.getbands():
+        if "A" in corrected.getbands() or "transparency" in corrected.info:
             rgba = corrected.convert("RGBA")
             white = Image.new("RGBA", rgba.size, (255, 255, 255, 255))
             return Image.alpha_composite(white, rgba).convert("RGB")

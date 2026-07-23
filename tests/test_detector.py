@@ -1,3 +1,5 @@
+import cv2
+import numpy as np
 from PIL import Image, ImageDraw
 
 from pickup_measure.src.detector import OpenCVVehicleDetector
@@ -18,3 +20,30 @@ def test_detects_vehicle_on_clean_background():
     assert bounds.roof <= 50
     assert bounds.ground >= 220
     assert bounds.ground <= 226
+
+
+def test_inner_rim_detection_still_finds_outer_tyre_contact(monkeypatch):
+    grayscale = np.full((300, 600), 255, dtype=np.uint8)
+    cv2.circle(grayscale, (150, 210), 60, 25, thickness=-1)
+    cv2.circle(grayscale, (450, 210), 60, 25, thickness=-1)
+    edges = cv2.Canny(grayscale, 50, 140)
+
+    # Simulate Hough locking onto the smaller bright rims rather than the tyres.
+    monkeypatch.setattr(
+        cv2,
+        "HoughCircles",
+        lambda *args, **kwargs: np.asarray(
+            [[[150.0, 210.0, 32.0], [450.0, 210.0, 32.0]]],
+            dtype=np.float32,
+        ),
+    )
+
+    ground = OpenCVVehicleDetector._wheel_contact_ground(
+        grayscale,
+        edges,
+        roof=50,
+        detected_ground=245,
+    )
+
+    assert ground is not None
+    assert ground >= 268
