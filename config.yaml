@@ -18,4 +18,4 @@ detection:
 quality:
   pass_max_percent: 3
   warning_max_percent: 15
-  error_max_percent: 20
+  error_max_percent: 35

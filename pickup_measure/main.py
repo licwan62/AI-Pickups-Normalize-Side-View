@@ -158,6 +158,7 @@ def process_vehicle(
         output_path=annotated_svg,
         width_mm=record.length_mm,
         height_mm=record.height_mm,
+        model_name=record.name,
         style=annotation_style,
     )
     exporter.write_measurements({
@@ -170,8 +171,6 @@ def process_vehicle(
         "cab_height_mm": round(annotation.cab_height_mm),
         "neck_height_mm": round(annotation.neck_height_mm),
         "hood_height_mm": round(annotation.hood_height_mm),
-        "door_seam_x_mm": round(annotation.door_seam_x_mm),
-        "door_to_front_mm": round(annotation.door_to_front_mm),
         "qc_status": qc.status.value,
     })
     LOGGER.info(
@@ -206,6 +205,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Reuse an existing points.json instead of detecting again",
     )
     parser.add_argument(
+        "--continue",
+        dest="continue_mode",
+        action="store_true",
+        help="Skip IDs whose final SVG and annotation data already exist",
+    )
+    parser.add_argument(
         "--approve-warning",
         action="store_true",
         help="Deprecated compatibility flag; warnings now continue automatically",
@@ -226,6 +231,19 @@ def main(argv: list[str] | None = None) -> int:
 
     summary: list[dict[str, str]] = []
     for record in records:
+        final_svg = args.output / record.size / f"{record.id}.svg"
+        annotation_points = (
+            args.output / record.size / record.id / "annotation_points.json"
+        )
+        if args.continue_mode and final_svg.is_file() and annotation_points.is_file():
+            LOGGER.info("%s: already generated; skipped by --continue", record.id)
+            summary.append({
+                "id": record.id,
+                "size": record.size,
+                "status": "SKIPPED",
+                "error": "",
+            })
+            continue
         try:
             status = process_vehicle(
                 record,
@@ -263,7 +281,7 @@ def main(argv: list[str] | None = None) -> int:
         writer = csv.DictWriter(stream, fieldnames=aggregate_fields, delimiter="\t")
         writer.writeheader()
         for item in summary:
-            if item["status"] != "EXPORTED":
+            if item["status"] not in {"EXPORTED", "SKIPPED"}:
                 continue
             record = record_by_id[item["id"]]
             annotation_payload = json.loads(
@@ -284,8 +302,16 @@ def main(argv: list[str] | None = None) -> int:
                 "车尾高": round(annotation_payload["bed_height_mm"]),
             })
     exported = sum(item["status"] == "EXPORTED" for item in summary)
-    LOGGER.info("Run complete: %d/%d exported", exported, len(summary))
-    return 0 if exported == len(summary) else 1
+    skipped = sum(item["status"] == "SKIPPED" for item in summary)
+    completed = exported + skipped
+    LOGGER.info(
+        "Run complete: %d exported, %d skipped, %d/%d complete",
+        exported,
+        skipped,
+        completed,
+        len(summary),
+    )
+    return 0 if completed == len(summary) else 1
 
 
 if __name__ == "__main__":

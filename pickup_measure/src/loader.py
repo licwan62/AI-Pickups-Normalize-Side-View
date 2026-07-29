@@ -8,10 +8,10 @@ import pandas as pd
 from PIL import Image, ImageOps
 
 
-SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
-REQUIRED_COLUMNS = {"id", "name", "Size", "length_mm", "width_mm", "height_mm"}
-SAFE_ID = re.compile(r"^[A-Za-z0-9_.-]+$")
+SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".avif"}
+REQUIRED_COLUMNS = {"name", "Size", "length_mm", "width_mm", "height_mm"}
 SAFE_SIZE = re.compile(r"^[A-Za-z0-9+_.-]+$")
+UNSAFE_FILENAME_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 
 
 @dataclass(frozen=True)
@@ -23,6 +23,16 @@ class VehicleRecord:
     width_mm: float
     height_mm: float
     size: str = "UNCLASSIFIED"
+
+
+def _generate_vehicle_id(row: pd.Series, columns: list[str]) -> str:
+    components: list[str] = []
+    for column in columns:
+        value = str(row[column]).strip()
+        value = re.sub(r"\s+", "_", value)
+        value = UNSAFE_FILENAME_CHARS.sub("_", value).rstrip(". ")
+        components.append(value or "empty")
+    return "_".join(components)
 
 
 def _resolve_image_path(raw_path: str, tsv_path: Path) -> Path:
@@ -45,7 +55,7 @@ def _find_image_by_id(vehicle_id: str, images_dir: Path) -> Path:
     ]
     if not matches:
         raise FileNotFoundError(
-            f"No image named {vehicle_id}.jpg/.jpeg/.png/.webp in {images_dir}"
+            f"No image named {vehicle_id}.jpg/.jpeg/.png/.webp/.avif in {images_dir}"
         )
     if len(matches) > 1:
         raise ValueError(f"Multiple images found for ID {vehicle_id}: {matches}")
@@ -58,23 +68,27 @@ def load_records(tsv_path: Path, images_dir: Path | None = None) -> list[Vehicle
     frame = pd.read_csv(
         tsv_path,
         sep=separator,
-        dtype={"id": str, "name": str, "Size": str, "image_path": str},
+        dtype=str,
+        keep_default_na=False,
     )
     missing = REQUIRED_COLUMNS - set(frame.columns)
     if missing:
         raise ValueError(f"Missing required TSV columns: {', '.join(sorted(missing))}")
     if frame.empty:
         raise ValueError("Input TSV contains no vehicles")
-    if frame["id"].duplicated().any():
-        duplicates = frame.loc[frame["id"].duplicated(keep=False), "id"].tolist()
+    id_columns = [column for column in frame.columns if column != "image_path"]
+    generated_ids = frame.apply(
+        lambda row: _generate_vehicle_id(row, id_columns),
+        axis=1,
+    )
+    if generated_ids.duplicated().any():
+        duplicates = generated_ids[generated_ids.duplicated(keep=False)].tolist()
         raise ValueError(f"Duplicate vehicle IDs: {duplicates}")
 
     records: list[VehicleRecord] = []
     for row_number, row in frame.iterrows():
         try:
-            vehicle_id = str(row["id"]).strip()
-            if not vehicle_id or vehicle_id in {".", ".."} or not SAFE_ID.fullmatch(vehicle_id):
-                raise ValueError("id may contain only letters, numbers, dot, underscore, and hyphen")
+            vehicle_id = generated_ids.loc[row_number]
             vehicle_size = str(row["Size"]).strip()
             if (
                 not vehicle_size
@@ -125,4 +139,6 @@ def load_image(path: Path) -> Image.Image:
             rgba = corrected.convert("RGBA")
             white = Image.new("RGBA", rgba.size, (255, 255, 255, 255))
             return Image.alpha_composite(white, rgba).convert("RGB")
+        # AVIF is decoded here and normalized to RGB; downstream crops are
+        # exported as PNG, so OpenCV and SVG generation never need AVIF support.
         return corrected.convert("RGB")

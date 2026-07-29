@@ -19,15 +19,14 @@ python -m pip install -r requirements.txt
 默认输入文件为 `input/vehicles.tsv`，使用 Tab 分隔，编码建议为 UTF-8：
 
 ```tsv
-id	name	Size	image_path	length_mm	width_mm	height_mm
-F150_01	Ford F150 Raptor	PK-XL		5908	2200	2027
+name	Size	image_path	length_mm	width_mm	height_mm
+Ford F150 Raptor	PK-XL	input/images/F150_01.jpg	5908	2200	2027
 ```
 
 字段说明：
 
 | 字段 | 必填 | 说明 |
 | --- | --- | --- |
-| `id` | 是 | 车辆唯一 ID，也用于查找默认图片文件名 |
 | `name` | 是 | 汇总表中的车型名称 |
 | `Size` | 是 | 输出分类目录，例如 `PK-XL`、`YL`、`YM+` |
 | `image_path` | 否 | 图片路径；填写后优先读取此路径 |
@@ -37,15 +36,18 @@ F150_01	Ford F150 Raptor	PK-XL		5908	2200	2027
 
 也支持逗号分隔的 CSV 文件，通过 `--input` 指定即可。
 
+程序会按表头顺序拼接除 `image_path` 外的所有字段来自动生成 ID，字段之间使用下划线连接；空白和文件名非法字符也会替换为下划线。例如上面的记录会生成
+`Ford_F150_Raptor_PK-XL_5908_2200_2027`。除 `image_path` 外字段完全相同的两行会因 ID 重复而被拒绝。
+
 ## 2. 准备车辆图片
 
-把图片放入 `input/images/`，文件名应与表格的 `id` 相同，例如：
+建议在表格中填写 `image_path`。如果留空，则把图片放入 `input/images/`，文件名应与自动生成的 ID 相同，例如：
 
 ```text
-input/images/F150_01.jpg
+input/images/Ford_F150_Raptor_PK-XL_5908_2200_2027.jpg
 ```
 
-支持 `.jpg`、`.jpeg`、`.png` 和 `.webp`。程序会自动处理 EXIF 旋转并转换为 RGB。若表格填写了 `image_path`，则优先使用该路径，不要求图片文件名与 `id` 相同。
+支持 `.jpg`、`.jpeg`、`.png`、`.webp` 和 `.avif`。程序会自动处理 EXIF 旋转并转换为 RGB；AVIF 解码后会按现有流程输出为 PNG crop。若表格填写了 `image_path`，则优先使用该路径，不要求图片文件名与自动生成的 ID 相同。
 
 为提高自动识别精度，建议使用接近正侧面的整车图，轮胎完整接触地面，背景尽量纯净，车辆四周不要被裁断。
 

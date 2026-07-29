@@ -2,7 +2,7 @@ import json
 
 from PIL import Image
 
-from pickup_measure.main import process_vehicle
+from pickup_measure.main import build_parser, main, process_vehicle
 from pickup_measure.src.geometry import Bounds
 from pickup_measure.src.loader import VehicleRecord
 
@@ -49,3 +49,51 @@ def test_warning_continues_to_dimension_annotation(tmp_path):
     qc = json.loads((item_dir / "qc_report.json").read_text(encoding="utf-8"))
     assert qc["status"] == "WARNING"
     assert qc["warning_auto_continued"] is True
+
+
+def test_continue_skips_an_already_generated_id(tmp_path):
+    image_path = tmp_path / "truck.png"
+    Image.new("RGB", (320, 120), "gray").save(image_path)
+    table = tmp_path / "vehicles.tsv"
+    table.write_text(
+        "name\tSize\timage_path\tlength_mm\twidth_mm\theight_mm\n"
+        "Test Truck\tTEST\ttruck.png\t6000\t2000\t2000\n",
+        encoding="utf-8",
+    )
+    config = tmp_path / "config.yaml"
+    config.write_text("{}\n", encoding="utf-8")
+    output = tmp_path / "output"
+    vehicle_id = "Test_Truck_TEST_6000_2000_2000"
+    item_dir = output / "TEST" / vehicle_id
+    item_dir.mkdir(parents=True)
+    final_svg = output / "TEST" / f"{vehicle_id}.svg"
+    final_svg.write_text("keep existing SVG", encoding="utf-8")
+    (item_dir / "annotation_points.json").write_text(
+        json.dumps({
+            "cab_height_mm": 1500,
+            "hood_height_mm": 900,
+            "neck_height_mm": 1000,
+            "bed_height_mm": 1100,
+        }),
+        encoding="utf-8",
+    )
+
+    result = main([
+        "--continue",
+        "--input", str(table),
+        "--images", str(tmp_path),
+        "--output", str(output),
+        "--config", str(config),
+    ])
+
+    assert result == 0
+    assert final_svg.read_text(encoding="utf-8") == "keep existing SVG"
+    summary = json.loads((output / "run_summary.json").read_text(encoding="utf-8"))
+    assert summary[0]["status"] == "SKIPPED"
+    assert "Test Truck" in (output / "measurements.tsv").read_text(encoding="utf-8-sig")
+
+
+def test_continue_flag_uses_a_safe_attribute_name():
+    args = build_parser().parse_args(["--continue"])
+
+    assert args.continue_mode is True

@@ -15,18 +15,30 @@ class AnnotationGeometry:
     cab_start_x_mm: float
     roof_end_x_mm: float
     neck_x_mm: float
-    door_seam_x_mm: float
-    door_to_front_mm: float
     bed_top_y_mm: float
     cab_roof_y_mm: float
     neck_y_mm: float
     hood_front_y_mm: float
     chassis_y_mm: float
+    chassis_left_y_mm: float
+    chassis_right_y_mm: float
     ground_y_mm: float
     bed_height_mm: float
     cab_height_mm: float
     neck_height_mm: float
     hood_height_mm: float
+
+    def chassis_y_at(self, x_mm: float) -> float:
+        if not self.outline_segments_mm:
+            return self.chassis_y_mm
+        vehicle_width_mm = self.outline_segments_mm[-1][2][0]
+        if vehicle_width_mm <= 0:
+            return self.chassis_y_mm
+        fraction = min(1.0, max(0.0, x_mm / vehicle_width_mm))
+        return (
+            self.chassis_left_y_mm
+            + (self.chassis_right_y_mm - self.chassis_left_y_mm) * fraction
+        )
 
     def points_payload(self) -> dict[str, object]:
         payload = asdict(self)
@@ -76,6 +88,120 @@ def _envelope(mask: np.ndarray, x_start: int, x_end: int, top: bool) -> np.ndarr
     return np.asarray(values)
 
 
+def _chassis_line(image: Image.Image, fallback_y: float) -> tuple[float, float]:
+    """Detect the lower body edge and extrapolate it across the vehicle width."""
+    grayscale = cv2.cvtColor(np.asarray(image.convert("RGB")), cv2.COLOR_RGB2GRAY)
+    height, width = grayscale.shape
+    edges = cv2.Canny(grayscale, 30, 120)
+
+    roi = np.zeros_like(edges)
+    x_start, x_end = round(width * 0.25), round(width * 0.75)
+    y_start = round(height * 0.62)
+    y_end = min(height, round(height * 0.91))
+    roi[y_start:y_end, x_start:x_end] = edges[y_start:y_end, x_start:x_end]
+    lines = cv2.HoughLinesP(
+        roi,
+        rho=1,
+        theta=np.pi / 720,
+        threshold=max(12, round(width * 0.035)),
+        minLineLength=max(20, round(width * 0.08)),
+        maxLineGap=max(4, round(width * 0.04)),
+    )
+    if lines is None:
+        return fallback_y, fallback_y
+
+    maximum_y = fallback_y - max(3.0, height * 0.035)
+    candidates: list[tuple[float, float, float, float]] = []
+    for x1, y1, x2, y2 in lines.reshape(-1, 4):
+        if x1 == x2:
+            continue
+        if x2 < x1:
+            x1, x2, y1, y2 = x2, x1, y2, y1
+        length = x2 - x1
+        slope = (y2 - y1) / length
+        midpoint_y = (y1 + y2) / 2
+        if abs(slope) > 0.12:
+            continue
+        if not height * 0.68 <= midpoint_y <= maximum_y:
+            continue
+        midpoint_x = (x1 + x2) / 2
+        # Prefer the lowest sustained body edge, with a modest length bonus.
+        score = midpoint_y + length * 0.03
+        candidates.append((score, slope, midpoint_x, midpoint_y))
+    if not candidates:
+        return fallback_y, fallback_y
+
+    _, local_slope, midpoint_x, midpoint_y = max(
+        candidates, key=lambda item: item[0]
+    )
+
+    # Estimate vehicle pitch from all long near-horizontal edges. This keeps a
+    # short diagonal wheel-arch or bumper edge from tilting the whole chassis.
+    pitch_lines = cv2.HoughLinesP(
+        edges,
+        rho=1,
+        theta=np.pi / 720,
+        threshold=max(20, round(width * 0.05)),
+        minLineLength=max(30, round(width * 0.15)),
+        maxLineGap=max(4, round(width * 0.04)),
+    )
+    weighted_slopes: list[tuple[float, float]] = []
+    if pitch_lines is not None:
+        for x1, y1, x2, y2 in pitch_lines.reshape(-1, 4):
+            if x1 == x2:
+                continue
+            length = abs(x2 - x1)
+            slope = (y2 - y1) / (x2 - x1)
+            line_midpoint_y = (y1 + y2) / 2
+            if abs(slope) <= 0.10 and height * 0.04 < line_midpoint_y < height * 0.88:
+                weighted_slopes.append((slope, float(length)))
+    if not weighted_slopes:
+        return fallback_y, fallback_y
+    weighted_slopes.sort(key=lambda item: item[0])
+    total_weight = sum(weight for _, weight in weighted_slopes)
+    half_weight = total_weight / 2
+    accumulated = 0.0
+    slope = local_slope
+    for candidate_slope, weight in weighted_slopes:
+        accumulated += weight
+        if accumulated >= half_weight:
+            slope = candidate_slope
+            break
+    coherent_weight = sum(
+        weight
+        for candidate_slope, weight in weighted_slopes
+        if abs(candidate_slope - slope) <= 0.01
+    )
+    pitch_is_coherent = coherent_weight / total_weight >= 0.35
+    # On level vehicles, a nearly horizontal edge spanning most of the image is
+    # a stronger chassis cue than the foreground envelope, which can absorb a
+    # short central ground shadow.
+    if abs(slope) < 0.012 or not pitch_is_coherent:
+        flat_edges: list[tuple[float, float]] = []
+        if pitch_lines is not None:
+            for x1, y1, x2, y2 in pitch_lines.reshape(-1, 4):
+                if x1 == x2:
+                    continue
+                length = abs(x2 - x1)
+                candidate_slope = (y2 - y1) / (x2 - x1)
+                candidate_y = (y1 + y2) / 2
+                if (
+                    length >= width * 0.70
+                    and abs(candidate_slope) <= 0.012
+                    and fallback_y - height * 0.25 <= candidate_y < fallback_y
+                ):
+                    flat_edges.append((candidate_y, float(length)))
+        if flat_edges:
+            chassis_y = max(flat_edges, key=lambda item: (item[0], item[1]))[0]
+            return chassis_y, chassis_y
+        return fallback_y, fallback_y
+
+    intercept = midpoint_y - slope * midpoint_x
+    left_y = float(np.clip(intercept, height * 0.55, fallback_y))
+    right_y = float(np.clip(intercept + slope * (width - 1), height * 0.55, fallback_y))
+    return left_y, right_y
+
+
 def measure_and_trace(
     image: Image.Image,
     mapping: ScaleMapping,
@@ -94,6 +220,7 @@ def measure_and_trace(
     neck_y_px = float(np.median(neck_values))
     hood_y_px = float(np.median(hood_values))
     chassis_y_px = float(np.median(chassis_values))
+    chassis_left_y_px, chassis_right_y_px = _chassis_line(image, chassis_y_px)
 
     # Denoise the upper envelope to locate the bed/cab transition and roof slope.
     profile_x: list[int] = []
@@ -134,33 +261,26 @@ def measure_and_trace(
     cab_y_mm = cab_y_px * mapping.scale_y
     neck_y_mm = neck_y_px * mapping.scale_y
     hood_y_mm = hood_y_px * mapping.scale_y
-    chassis_y_mm = chassis_y_px * mapping.scale_y
+    chassis_left_y_mm = chassis_left_y_px * mapping.scale_y
+    chassis_right_y_mm = chassis_right_y_px * mapping.scale_y
+    chassis_y_mm = (chassis_left_y_mm + chassis_right_y_mm) / 2
     cab_start_x_mm = cab_start_x_px * mapping.scale_x
     roof_end_x_mm = roof_end_x_px * mapping.scale_x
     neck_x_mm = neck_x_px * mapping.scale_x
     front_x_mm = front_x_px * mapping.scale_x
 
-    # Detect the full-height B-pillar/door seam using vertical gradient energy in
-    # the lower door panels. Handles and mirrors do not persist through this ROI.
-    grayscale = cv2.cvtColor(np.asarray(image.convert("RGB")), cv2.COLOR_RGB2GRAY)
-    vertical_edges = np.abs(cv2.Sobel(grayscale, cv2.CV_32F, 1, 0, ksize=3))
-    cabin_span = neck_x_px - cab_start_x_px
-    door_search_left = cab_start_x_px + round(cabin_span * 0.16)
-    door_search_right = neck_x_px - round(cabin_span * 0.16)
-    door_y_start = round(height * 0.38)
-    door_y_end = min(height, round(chassis_y_px * 0.98))
-    door_scores = vertical_edges[door_y_start:door_y_end].sum(axis=0)
-    door_scores = cv2.GaussianBlur(door_scores.reshape(1, -1), (0, 0), sigmaX=3).reshape(-1)
-    door_seam_x_px = door_search_left + int(
-        np.argmax(door_scores[door_search_left:door_search_right])
-    )
-    door_seam_x_mm = door_seam_x_px * mapping.scale_x
-    door_to_front_mm = max(0.0, front_x_mm - door_seam_x_mm)
+    def chassis_at(x_mm: float) -> float:
+        fraction = x_mm / max(front_x_mm, 1.0)
+        return chassis_left_y_mm + (chassis_right_y_mm - chassis_left_y_mm) * fraction
 
+    bed_chassis_y_mm = chassis_at(0.0)
+    cab_chassis_y_mm = chassis_at(cab_start_x_mm)
+    neck_chassis_y_mm = chassis_at(neck_x_mm)
+    hood_chassis_y_mm = chassis_at(front_x_mm)
     outline_segments_mm = [
-        [(0.0, chassis_y_mm), (0.0, bed_y_mm), (cab_start_x_mm, bed_y_mm), (cab_start_x_mm, chassis_y_mm), (0.0, chassis_y_mm)],
-        [(cab_start_x_mm, chassis_y_mm), (cab_start_x_mm, cab_y_mm), (roof_end_x_mm, cab_y_mm), (neck_x_mm, neck_y_mm), (neck_x_mm, chassis_y_mm), (cab_start_x_mm, chassis_y_mm)],
-        [(neck_x_mm, chassis_y_mm), (neck_x_mm, neck_y_mm), (front_x_mm, hood_y_mm), (front_x_mm, chassis_y_mm), (neck_x_mm, chassis_y_mm)],
+        [(0.0, bed_chassis_y_mm), (0.0, bed_y_mm), (cab_start_x_mm, bed_y_mm), (cab_start_x_mm, cab_chassis_y_mm), (0.0, bed_chassis_y_mm)],
+        [(cab_start_x_mm, cab_chassis_y_mm), (cab_start_x_mm, cab_y_mm), (roof_end_x_mm, cab_y_mm), (neck_x_mm, neck_y_mm), (neck_x_mm, neck_chassis_y_mm), (cab_start_x_mm, cab_chassis_y_mm)],
+        [(neck_x_mm, neck_chassis_y_mm), (neck_x_mm, neck_y_mm), (front_x_mm, hood_y_mm), (front_x_mm, hood_chassis_y_mm), (neck_x_mm, neck_chassis_y_mm)],
     ]
 
     return AnnotationGeometry(
@@ -168,16 +288,16 @@ def measure_and_trace(
         cab_start_x_mm=cab_start_x_mm,
         roof_end_x_mm=roof_end_x_mm,
         neck_x_mm=neck_x_mm,
-        door_seam_x_mm=door_seam_x_mm,
-        door_to_front_mm=door_to_front_mm,
         bed_top_y_mm=bed_y_mm,
         cab_roof_y_mm=cab_y_mm,
         neck_y_mm=neck_y_mm,
         hood_front_y_mm=hood_y_mm,
         chassis_y_mm=chassis_y_mm,
+        chassis_left_y_mm=chassis_left_y_mm,
+        chassis_right_y_mm=chassis_right_y_mm,
         ground_y_mm=height_mm,
-        bed_height_mm=max(0.0, chassis_y_mm - bed_y_mm),
-        cab_height_mm=max(0.0, chassis_y_mm - cab_y_mm),
-        neck_height_mm=max(0.0, chassis_y_mm - neck_y_mm),
-        hood_height_mm=max(0.0, chassis_y_mm - hood_y_mm),
+        bed_height_mm=max(0.0, bed_chassis_y_mm - bed_y_mm),
+        cab_height_mm=max(0.0, cab_chassis_y_mm - cab_y_mm),
+        neck_height_mm=max(0.0, neck_chassis_y_mm - neck_y_mm),
+        hood_height_mm=max(0.0, hood_chassis_y_mm - hood_y_mm),
     )

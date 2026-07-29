@@ -11,6 +11,12 @@ from .annotation import AnnotationGeometry
 from .settings import AnnotationStyle
 
 
+ANNOTATED_MARGIN_LEFT_MM = 750.0
+ANNOTATED_MARGIN_TOP_MM = 220.0
+ANNOTATED_PADDING_RIGHT_MM = 1000.0
+ANNOTATED_MARGIN_BOTTOM_MM = 620.0
+
+
 def _png_data_uri(image: Image.Image) -> str:
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
@@ -84,8 +90,12 @@ def render_annotated_svg(
     width_mm: float,
     height_mm: float,
     style: AnnotationStyle = AnnotationStyle(),
+    model_name: str = "",
 ) -> Path:
-    margin_left, margin_top, margin_right, margin_bottom = 750.0, 220.0, 1050.0, 620.0
+    margin_left = ANNOTATED_MARGIN_LEFT_MM
+    margin_top = ANNOTATED_MARGIN_TOP_MM
+    margin_right = ANNOTATED_PADDING_RIGHT_MM
+    margin_bottom = ANNOTATED_MARGIN_BOTTOM_MM
     canvas_width = margin_left + width_mm + margin_right
     canvas_height = margin_top + height_mm + margin_bottom
     drawing = svgwrite.Drawing(
@@ -107,20 +117,6 @@ def render_annotated_svg(
             stroke_linejoin="miter", stroke_linecap="square",
         ))
 
-    door_y = origin_y + height_mm + 160
-    door_x = origin_x + geometry.door_seam_x_mm
-    front_x = origin_x + width_mm
-    drawing.add(drawing.line((door_x, origin_y + geometry.cab_roof_y_mm), (door_x, origin_y + geometry.chassis_y_mm), stroke=style.outline_color, stroke_width=style.outline_width_mm))
-    drawing.add(drawing.line((door_x, origin_y + geometry.chassis_y_mm), (door_x, door_y + 45), stroke="#777", stroke_width=2))
-    drawing.add(drawing.line((front_x, origin_y + geometry.chassis_y_mm), (front_x, door_y + 45), stroke="#777", stroke_width=2))
-    drawing.add(_arrow_dimension(
-        drawing, (door_x, door_y), (front_x, door_y),
-        f"DOOR TO FRONT  {geometry.door_to_front_mm:.0f}",
-        colour=style.dimension_color, stroke_width=style.dimension_width_mm,
-        font_size=style.font_size_mm,
-        font_family=style.font_family,
-    ))
-
     length_y = origin_y + height_mm + 430
     drawing.add(drawing.line((origin_x, origin_y + height_mm), (origin_x, length_y + 55), stroke="#777", stroke_width=2))
     drawing.add(drawing.line((origin_x + width_mm, origin_y + height_mm), (origin_x + width_mm, length_y + 55), stroke="#777", stroke_width=2))
@@ -138,6 +134,7 @@ def render_annotated_svg(
         (width_mm + 420, width_mm, geometry.hood_front_y_mm, geometry.hood_height_mm, "HOOD"),
     )
     for x, reference_x, feature_y, measured_mm, label in inner_dimensions:
+        reference_chassis_y = geometry.chassis_y_at(reference_x)
         extension_end_x = x + (55 if x < reference_x else -55)
         drawing.add(drawing.line(
             (origin_x + reference_x, origin_y + feature_y),
@@ -145,20 +142,29 @@ def render_annotated_svg(
             stroke="#777", stroke_width=2,
         ))
         drawing.add(drawing.line(
-            (origin_x + reference_x, origin_y + geometry.chassis_y_mm),
-            (origin_x + extension_end_x, origin_y + geometry.chassis_y_mm),
+            (origin_x + reference_x, origin_y + reference_chassis_y),
+            (origin_x + extension_end_x, origin_y + reference_chassis_y),
             stroke="#777", stroke_width=2,
         ))
         drawing.add(_arrow_dimension(
             drawing,
             (origin_x + x, origin_y + feature_y),
-            (origin_x + x, origin_y + geometry.chassis_y_mm),
+            (origin_x + x, origin_y + reference_chassis_y),
             f"{label}  {measured_mm:.0f}",
             vertical=True,
             colour=style.dimension_color,
             stroke_width=style.dimension_width_mm,
             font_size=style.font_size_mm,
             font_family=style.font_family,
+        ))
+    if model_name:
+        drawing.add(drawing.text(
+            model_name,
+            insert=(origin_x + width_mm / 2, canvas_height - 45),
+            text_anchor="middle",
+            font_size=style.font_size_mm,
+            font_family=style.font_family,
+            fill=style.dimension_color,
         ))
     drawing.save(pretty=True)
     return output_path
@@ -172,8 +178,12 @@ def render_annotated_preview(
     height_mm: float,
     preview_width_px: int = 2400,
     style: AnnotationStyle = AnnotationStyle(),
+    model_name: str = "",
 ) -> Path:
-    margin_left, margin_top, margin_right, margin_bottom = 750.0, 220.0, 1050.0, 620.0
+    margin_left = ANNOTATED_MARGIN_LEFT_MM
+    margin_top = ANNOTATED_MARGIN_TOP_MM
+    margin_right = ANNOTATED_PADDING_RIGHT_MM
+    margin_bottom = ANNOTATED_MARGIN_BOTTOM_MM
     canvas_width_mm = margin_left + width_mm + margin_right
     canvas_height_mm = margin_top + height_mm + margin_bottom
     scale = preview_width_px / canvas_width_mm
@@ -223,22 +233,6 @@ def render_annotated_preview(
             (center[0] - rotated.width // 2, center[1] - rotated.height // 2),
             rotated,
         )
-    door_y = origin_y + height_mm + 160
-    door_x = origin_x + geometry.door_seam_x_mm
-    front_x = origin_x + width_mm
-    draw.line(
-        [point(door_x, origin_y + geometry.cab_roof_y_mm), point(door_x, origin_y + geometry.chassis_y_mm)],
-        fill=red, width=line_width,
-    )
-    draw.line([point(door_x, origin_y + geometry.chassis_y_mm), point(door_x, door_y + 40)], fill="#777", width=1)
-    draw.line([point(front_x, origin_y + geometry.chassis_y_mm), point(front_x, door_y + 40)], fill="#777", width=1)
-    draw.line([point(door_x, door_y), point(front_x, door_y)], fill=style.dimension_color, width=max(1, round(style.dimension_width_mm * scale)))
-    draw.text(
-        point((door_x + front_x) / 2, door_y - 40),
-        f"DOOR TO FRONT  {geometry.door_to_front_mm:.0f}",
-        fill=style.dimension_color, font=font, anchor="ms",
-    )
-
     length_y = origin_y + height_mm + 430
     draw.line([point(origin_x, origin_y + height_mm), point(origin_x, length_y + 40)], fill="#777", width=1)
     draw.line([point(origin_x + width_mm, origin_y + height_mm), point(origin_x + width_mm, length_y + 40)], fill="#777", width=1)
@@ -261,17 +255,31 @@ def render_annotated_preview(
         (width_mm + 420, width_mm, geometry.hood_front_y_mm, geometry.hood_height_mm, "HOOD"),
     )
     for x, reference_x, top_y, measured, label in dimensions:
+        reference_chassis_y = geometry.chassis_y_at(reference_x)
         end_x = x + (40 if x < reference_x else -40)
         draw.line([point(origin_x + reference_x, origin_y + top_y), point(origin_x + end_x, origin_y + top_y)], fill="#777", width=1)
-        draw.line([point(origin_x + reference_x, origin_y + geometry.chassis_y_mm), point(origin_x + end_x, origin_y + geometry.chassis_y_mm)], fill="#777", width=1)
+        draw.line([point(origin_x + reference_x, origin_y + reference_chassis_y), point(origin_x + end_x, origin_y + reference_chassis_y)], fill="#777", width=1)
         draw.line(
-            [point(origin_x + x, origin_y + top_y), point(origin_x + x, origin_y + geometry.chassis_y_mm)],
+            [point(origin_x + x, origin_y + top_y), point(origin_x + x, origin_y + reference_chassis_y)],
             fill=style.dimension_color, width=max(1, round(style.dimension_width_mm * scale)),
         )
         paste_rotated_text(
             f"{label}  {measured:.0f}",
-            point(origin_x + x + 40, origin_y + (top_y + geometry.chassis_y_mm) / 2),
+            point(origin_x + x + 40, origin_y + (top_y + reference_chassis_y) / 2),
             style.dimension_color,
+        )
+    if model_name:
+        small_font_size = max(12, round(style.font_size_mm * scale))
+        try:
+            small_font = ImageFont.truetype("arial.ttf", small_font_size)
+        except OSError:
+            small_font = ImageFont.load_default()
+        draw.text(
+            point(origin_x + width_mm / 2, canvas_height_mm - 45),
+            model_name,
+            fill=style.dimension_color,
+            font=small_font,
+            anchor="ms",
         )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     preview.save(output_path, format="PNG", optimize=True)
