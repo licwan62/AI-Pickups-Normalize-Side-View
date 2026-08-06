@@ -1,4 +1,4 @@
-input_tsv: input/vehicles.tsv
+input_tsv: input/vehicles.csv
 images_dir: input/images
 output_dir: output
 output:
@@ -13,8 +13,14 @@ annotation:
   font_size_mm: 82
   font_family: "Arial"
 detection:
-  mode: automatic
-  manual_fallback: true
+  provider: qwen
+  model: qwen3-vl-plus
+  endpoint: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
+  api_key: "sk-ws-H.EIELEYL.ZufD.MEUCIQCu4Iokf92OyGgQ_PY5rLQkM5poIENaCpqbkJJE6NBOBAIgOn7BKhaDtXMjH2STX-Sa6lT5dOQ4woU6vEJEkMmtZys"
+  prompt_file: promting.md
+  timeout_seconds: 90
+  manual_fallback: false
+  perspective_correction: false
 quality:
   pass_max_percent: 3
   warning_max_percent: 15

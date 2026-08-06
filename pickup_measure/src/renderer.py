@@ -127,12 +127,16 @@ def render_annotated_svg(
     drawing.add(drawing.line((origin_x + width_mm, origin_y + height_mm), (height_x + 55, origin_y + height_mm), stroke="#777", stroke_width=2))
     drawing.add(_arrow_dimension(drawing, (height_x, origin_y), (height_x, origin_y + height_mm), f"HEIGHT  {height_mm:.0f}", vertical=True, colour=style.dimension_color, stroke_width=style.dimension_width_mm, font_size=style.font_size_mm, font_family=style.font_family))
 
-    inner_dimensions = (
-        (-420.0, 0.0, geometry.bed_top_y_mm, geometry.bed_height_mm, "BED"),
+    inner_dimensions = [
         (-150.0, geometry.cab_start_x_mm, geometry.cab_roof_y_mm, geometry.cab_height_mm, "CAB"),
         (width_mm + 150, geometry.neck_x_mm, geometry.neck_y_mm, geometry.neck_height_mm, "NECK"),
         (width_mm + 420, width_mm, geometry.hood_front_y_mm, geometry.hood_height_mm, "HOOD"),
-    )
+    ]
+    if geometry.is_pickup:
+        inner_dimensions.insert(
+            0,
+            (-420.0, 0.0, geometry.bed_top_y_mm, geometry.bed_height_mm, "BED"),
+        )
     for x, reference_x, feature_y, measured_mm, label in inner_dimensions:
         reference_chassis_y = geometry.chassis_y_at(reference_x)
         extension_end_x = x + (55 if x < reference_x else -55)
@@ -166,6 +170,94 @@ def render_annotated_svg(
             font_family=style.font_family,
             fill=style.dimension_color,
         ))
+    drawing.save(pretty=True)
+    return output_path
+
+
+def render_dimensioned_vehicle_svg(
+    image: Image.Image,
+    output_path: Path,
+    width_mm: float,
+    height_mm: float,
+    style: AnnotationStyle = AnnotationStyle(),
+) -> Path:
+    """Render the vehicle with overall LENGTH and HEIGHT dimensions only."""
+    if width_mm <= 0 or height_mm <= 0:
+        raise ValueError("SVG dimensions must be positive")
+    margin_left = ANNOTATED_MARGIN_LEFT_MM
+    margin_top = ANNOTATED_MARGIN_TOP_MM
+    margin_right = ANNOTATED_PADDING_RIGHT_MM
+    margin_bottom = ANNOTATED_MARGIN_BOTTOM_MM
+    canvas_width = margin_left + width_mm + margin_right
+    canvas_height = margin_top + height_mm + margin_bottom
+    origin_x, origin_y = margin_left, margin_top
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    drawing = svgwrite.Drawing(
+        filename=str(output_path),
+        size=(f"{canvas_width:g}mm", f"{canvas_height:g}mm"),
+        viewBox=f"0 0 {canvas_width:g} {canvas_height:g}",
+        profile="full",
+    )
+    drawing.add(drawing.rect(
+        insert=(0, 0),
+        size=(canvas_width, canvas_height),
+        fill=style.background_color,
+    ))
+    drawing.add(drawing.image(
+        href=_png_data_uri(image),
+        insert=(origin_x, origin_y),
+        size=(width_mm, height_mm),
+        preserveAspectRatio="none",
+    ))
+
+    length_y = origin_y + height_mm + 430
+    drawing.add(drawing.line(
+        (origin_x, origin_y + height_mm),
+        (origin_x, length_y + 55),
+        stroke="#777",
+        stroke_width=2,
+    ))
+    drawing.add(drawing.line(
+        (origin_x + width_mm, origin_y + height_mm),
+        (origin_x + width_mm, length_y + 55),
+        stroke="#777",
+        stroke_width=2,
+    ))
+    drawing.add(_arrow_dimension(
+        drawing,
+        (origin_x, length_y),
+        (origin_x + width_mm, length_y),
+        f"LENGTH  {width_mm:.0f}",
+        colour=style.dimension_color,
+        stroke_width=style.dimension_width_mm,
+        font_size=style.font_size_mm,
+        font_family=style.font_family,
+    ))
+
+    height_x = origin_x + width_mm + 750
+    drawing.add(drawing.line(
+        (origin_x + width_mm, origin_y),
+        (height_x + 55, origin_y),
+        stroke="#777",
+        stroke_width=2,
+    ))
+    drawing.add(drawing.line(
+        (origin_x + width_mm, origin_y + height_mm),
+        (height_x + 55, origin_y + height_mm),
+        stroke="#777",
+        stroke_width=2,
+    ))
+    drawing.add(_arrow_dimension(
+        drawing,
+        (height_x, origin_y),
+        (height_x, origin_y + height_mm),
+        f"HEIGHT  {height_mm:.0f}",
+        vertical=True,
+        colour=style.dimension_color,
+        stroke_width=style.dimension_width_mm,
+        font_size=style.font_size_mm,
+        font_family=style.font_family,
+    ))
     drawing.save(pretty=True)
     return output_path
 
@@ -248,12 +340,16 @@ def render_annotated_preview(
         style.dimension_color,
     )
 
-    dimensions = (
-        (-420.0, 0.0, geometry.bed_top_y_mm, geometry.bed_height_mm, "BED"),
+    dimensions = [
         (-150.0, geometry.cab_start_x_mm, geometry.cab_roof_y_mm, geometry.cab_height_mm, "CAB"),
         (width_mm + 150, geometry.neck_x_mm, geometry.neck_y_mm, geometry.neck_height_mm, "NECK"),
         (width_mm + 420, width_mm, geometry.hood_front_y_mm, geometry.hood_height_mm, "HOOD"),
-    )
+    ]
+    if geometry.is_pickup:
+        dimensions.insert(
+            0,
+            (-420.0, 0.0, geometry.bed_top_y_mm, geometry.bed_height_mm, "BED"),
+        )
     for x, reference_x, top_y, measured, label in dimensions:
         reference_chassis_y = geometry.chassis_y_at(reference_x)
         end_x = x + (40 if x < reference_x else -40)

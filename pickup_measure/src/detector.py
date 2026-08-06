@@ -13,7 +13,11 @@ class VehicleDetector(ABC):
     """Extension point for a future YOLO/SAM automatic detector."""
 
     @abstractmethod
-    def detect(self, image: Image.Image) -> Bounds:
+    def detect(
+        self,
+        image: Image.Image,
+        expected_aspect: float | None = None,
+    ) -> Bounds:
         """Return vehicle bounds in source-image pixels or raise on failure."""
         raise NotImplementedError
 
@@ -24,6 +28,154 @@ class OpenCVVehicleDetector(VehicleDetector):
     def __init__(self, max_working_size: int = 1400, iterations: int = 5):
         self.max_working_size = max_working_size
         self.iterations = iterations
+        self.last_attempt_bounds: Bounds | None = None
+
+    def _detect_complex_scene(
+        self,
+        working: np.ndarray,
+        original_width: int,
+        original_height: int,
+        scale: float,
+        expected_aspect: float,
+    ) -> Bounds:
+        """Recover a vehicle box in a natural scene using its known proportions."""
+        height, width = working.shape[:2]
+        if expected_aspect <= 1.2:
+            raise RuntimeError("Expected vehicle aspect ratio is not plausible")
+
+        bgr = cv2.cvtColor(working, cv2.COLOR_RGB2BGR)
+        mask = np.full((height, width), cv2.GC_PR_BGD, dtype=np.uint8)
+        border = max(2, round(min(width, height) * 0.02))
+        mask[:round(height * 0.25), :] = cv2.GC_BGD
+        mask[-round(height * 0.12):, :] = cv2.GC_BGD
+        mask[:, :border] = cv2.GC_BGD
+        mask[:, -border:] = cv2.GC_BGD
+
+        # Side-profile source photos consistently put the body through the lower
+        # centre of the frame. A small certain-foreground seed lets GrabCut learn
+        # the paint/body colours without labelling every non-border colour as a
+        # vehicle (which is what joins trees, pavement, and utility poles).
+        seed_top = round(height * 0.525)
+        seed_bottom = max(seed_top + 1, round(height * 0.575))
+        seed_left = round(width * 0.42)
+        seed_right = max(seed_left + 1, round(width * 0.58))
+        mask[seed_top:seed_bottom, seed_left:seed_right] = cv2.GC_FGD
+
+        bg_model = np.zeros((1, 65), np.float64)
+        fg_model = np.zeros((1, 65), np.float64)
+        try:
+            cv2.grabCut(
+                bgr,
+                mask,
+                None,
+                bg_model,
+                fg_model,
+                self.iterations,
+                cv2.GC_INIT_WITH_MASK,
+            )
+        except cv2.error as exc:
+            raise RuntimeError("OpenCV guided foreground segmentation failed") from exc
+
+        foreground = np.where(
+            (mask == cv2.GC_FGD) | (mask == cv2.GC_PR_FGD), 255, 0
+        ).astype(np.uint8)
+        kernel_size = max(3, round(min(width, height) * 0.008))
+        if kernel_size % 2 == 0:
+            kernel_size += 1
+        kernel = cv2.getStructuringElement(
+            cv2.MORPH_ELLIPSE,
+            (kernel_size, kernel_size),
+        )
+        foreground = cv2.morphologyEx(
+            foreground,
+            cv2.MORPH_CLOSE,
+            kernel,
+            iterations=2,
+        )
+
+        count, labels, stats, centroids = cv2.connectedComponentsWithStats(
+            foreground,
+            8,
+        )
+        candidates: list[tuple[float, int]] = []
+        for label in range(1, count):
+            x, y, component_width, component_height, area = stats[label]
+            center_x, center_y = centroids[label]
+            if component_width < width * 0.5 or component_height < height * 0.12:
+                continue
+            if not width * 0.25 <= center_x <= width * 0.75:
+                continue
+            if not height * 0.3 <= center_y <= height * 0.75:
+                continue
+            candidates.append((float(area), label))
+        if not candidates:
+            raise RuntimeError(
+                "Automatic detection confidence is too low; use --manual for this image"
+            )
+
+        _, best_label = max(candidates)
+        x, y, box_width, box_height, _ = (
+            int(value) for value in stats[best_label]
+        )
+        component_aspect = box_width / max(box_height, 1)
+        component_aspect_error = abs(component_aspect / expected_aspect - 1.0)
+
+        # GrabCut tends to stop at painted panels and miss narrow chrome bumpers,
+        # tow hardware, or mud flaps. Preserve a small horizontal safety margin,
+        # but reduce it when the vehicle already fills most of the frame.
+        padding_fraction = 0.01 if box_width >= width * 0.90 else 0.025
+        horizontal_padding = round(width * padding_fraction)
+        padded_left = max(0, x - horizontal_padding)
+        padded_right = min(width, x + box_width + horizontal_padding)
+        x = padded_left
+        box_width = padded_right - padded_left
+
+        # The component normally captures the long body but may omit either the
+        # roof or tyres. Reconstruct that axis from the catalogued length/height
+        # ratio, retaining 2% vertical breathing room for roof lights and tyres.
+        crop_height = max(1, round((box_width / expected_aspect) * 1.02))
+        if box_height < crop_height * 0.70:
+            crop_top = y - round(crop_height * 0.03)
+        else:
+            crop_top = round(y + box_height / 2.0 - crop_height / 2.0)
+        crop_top = min(max(0, crop_top), max(0, height - crop_height))
+        crop_bottom = min(height, crop_top + crop_height)
+
+        guided_aspect = box_width / max(crop_bottom - crop_top, 1)
+        aspect_error = abs(guided_aspect / expected_aspect - 1.0)
+        inverse_scale = 1.0 / scale
+        bounds = Bounds(
+            left=max(0, int(np.floor(x * inverse_scale))),
+            right=min(
+                original_width,
+                int(np.ceil((x + box_width) * inverse_scale)),
+            ),
+            roof=max(0, int(np.floor(crop_top * inverse_scale))),
+            ground=min(
+                original_height,
+                int(np.ceil(crop_bottom * inverse_scale)),
+            ),
+        )
+        bounds.validate(original_width, original_height)
+        self.last_attempt_bounds = bounds
+
+        # A near-full-width component is valid when its raw proportions already
+        # resemble the catalogued vehicle. This distinguishes a tightly framed
+        # pickup from an unrelated full-canvas foreground component.
+        full_width_is_plausible_vehicle = (
+            box_width > width * 0.995
+            and component_aspect_error <= 0.20
+        )
+        if (
+            (box_width > width * 0.995 and not full_width_is_plausible_vehicle)
+            or crop_bottom - crop_top > height * 0.75
+            or aspect_error > 0.08
+        ):
+            raise RuntimeError(
+                "Automatic detection confidence is too low; use --manual for this image"
+            )
+
+        return bounds
 
     @staticmethod
     def _wheel_contact_ground(
@@ -102,7 +254,12 @@ class OpenCVVehicleDetector(VehicleDetector):
             return None
         return min(height, round(float(np.median(contact_rows))))
 
-    def detect(self, image: Image.Image) -> Bounds:
+    def detect(
+        self,
+        image: Image.Image,
+        expected_aspect: float | None = None,
+    ) -> Bounds:
+        self.last_attempt_bounds = None
         rgb = np.asarray(image.convert("RGB"))
         original_height, original_width = rgb.shape[:2]
         scale = min(1.0, self.max_working_size / max(original_width, original_height))
@@ -266,17 +423,41 @@ class OpenCVVehicleDetector(VehicleDetector):
         fill_ratio = selected_area / (box_width * box_height)
         box_area_ratio = box_width * box_height / image_area
         aspect = box_width / max(box_height, 1)
-        if box_area_ratio > 0.92 or fill_ratio > 0.92 or aspect < 1.2:
+        inverse_scale = 1.0 / scale
+        initial_bounds = Bounds(
+            left=max(0, int(np.floor(x * inverse_scale))),
+            right=min(
+                original_width,
+                int(np.ceil((x + box_width) * inverse_scale)),
+            ),
+            roof=max(0, int(np.floor(y * inverse_scale))),
+            ground=min(
+                original_height,
+                int(np.ceil((y + box_height) * inverse_scale)),
+            ),
+        )
+        initial_bounds.validate(original_width, original_height)
+        self.last_attempt_bounds = initial_bounds
+        low_confidence = (
+            box_area_ratio > 0.92
+            or fill_ratio > 0.92
+            or aspect < 1.2
+        )
+        aspect_mismatch = (
+            expected_aspect is not None
+            and abs(aspect / expected_aspect - 1.0) > 0.35
+        )
+        if expected_aspect is not None and (low_confidence or aspect_mismatch):
+            return self._detect_complex_scene(
+                working=working,
+                original_width=original_width,
+                original_height=original_height,
+                scale=scale,
+                expected_aspect=expected_aspect,
+            )
+        if low_confidence:
             raise RuntimeError(
                 "Automatic detection confidence is too low; use --manual for this image"
             )
 
-        inverse_scale = 1.0 / scale
-        bounds = Bounds(
-            left=max(0, int(np.floor(x * inverse_scale))),
-            right=min(original_width, int(np.ceil((x + box_width) * inverse_scale))),
-            roof=max(0, int(np.floor(y * inverse_scale))),
-            ground=min(original_height, int(np.ceil((y + box_height) * inverse_scale))),
-        )
-        bounds.validate(original_width, original_height)
-        return bounds
+        return initial_bounds

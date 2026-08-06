@@ -1,6 +1,24 @@
 # Pickup Side Profile Measurement Tool
 
-批量读取皮卡侧视图，自动识别车辆边缘并紧密裁剪，再按 TSV 中的真实车长和车高生成可直接导入 Adobe Illustrator 的毫米尺寸 SVG。工具同时生成结构化红色线框、尺寸标注、单车过程文件和批次汇总表。
+## 运行模式
+
+默认使用不测量模式：
+
+```powershell
+python main.py
+# 等同于
+python main.py --no-measure
+```
+
+该模式只定位、校正方向和透视、紧密裁剪并放大导出 `vehicle.svg`，默认标注整车 `LENGTH` 和 `HEIGHT`；不会执行局部尺寸测量和比例质检，也不会生成红框、HOOD/CAB/NECK/BED 标注、`annotation_points.json`、单车 `measurements.tsv` 或批次 `measurements.tsv`。
+
+如需使用原有的完整测量、红框标注和尺寸结果流程，请显式指定：
+
+```powershell
+python main.py --measure
+```
+
+批量读取皮卡侧视图，由 AI 识别主车辆、车头方向和透视校准并紧密裁剪，再由 Python 从校正后的像素中测量并绘制红色车型结构，最后按 TSV 中的真实车长和车高生成可直接导入 Adobe Illustrator 的毫米尺寸 SVG。工具同时生成尺寸标注、单车过程文件和批次汇总表。
 
 ## 环境安装
 
@@ -59,7 +77,7 @@ input/images/Ford_F150_Raptor_PK-XL_5908_2200_2027.jpg
 python main.py
 ```
 
-程序将逐车执行自动边缘识别、无留白裁剪、长高独立缩放、比例质检、线框绘制和尺寸计算。某一辆车失败不会中断整个批次，详情记录在日志和运行汇总中。
+程序将逐车执行 AI 主体定位、方向归一、透视校正和无留白裁剪，然后用 Python 执行结构边缘测量、长高独立缩放、比例质检、红色线框绘制和尺寸计算。AI 不参与 BED/CAB/HOOD 或红色结构线识别。某一辆车失败不会中断整个批次，详情记录在日志和运行汇总中。
 
 常用命令：
 
@@ -118,6 +136,7 @@ output/PK-XL/
 - `crop_source.png`：紧密裁剪的原始像素，仅作为 SVG 内嵌图源，不需要单独导入工程。
 - `orientation.json`：车头方向识别结果、置信度、翻转状态及各项判断分数。车头在左时，`crop_source.png` 会水平翻转为车头朝右后再进入尺寸识别。
 - `points.json`：自动或人工确定的裁剪边界。
+- `detection.json`：AI 返回的主体边界、车头方向和透视校准结果；不包含红色车型结构点。
 - `annotation_points.json`：轮廓、底盘线、车门线等自动测量坐标，内部单位为 mm。
 - `measurements.tsv`：单车详细测量结果。
 
@@ -133,7 +152,7 @@ output/
 汇总表 `output/measurements.tsv` 的列为：
 
 ```text
-车型  车长  车宽  CAB高  车头高  车颈高  车尾高
+NAME  SIZE  L-MM  W-MM  H-MM  CAB-H  HOOD-H  NECK-H  BED-H
 ```
 
 表格实际使用 Tab 分隔，所有尺寸均为整数毫米，不附带单位文字。

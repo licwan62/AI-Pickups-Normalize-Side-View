@@ -73,9 +73,16 @@ def load_records(tsv_path: Path, images_dir: Path | None = None) -> list[Vehicle
     )
     missing = REQUIRED_COLUMNS - set(frame.columns)
     if missing:
-        raise ValueError(f"Missing required TSV columns: {', '.join(sorted(missing))}")
+        raise ValueError(f"Missing required CSV/TSV columns: {', '.join(sorted(missing))}")
     if frame.empty:
-        raise ValueError("Input TSV contains no vehicles")
+        raise ValueError("Input CSV/TSV contains no vehicles")
+    if "image_path" in frame.columns:
+        has_image_path = frame["image_path"].map(
+            lambda value: pd.notna(value) and bool(str(value).strip())
+        )
+        frame = frame.loc[has_image_path]
+        if frame.empty:
+            return []
     id_columns = [column for column in frame.columns if column != "image_path"]
     generated_ids = frame.apply(
         lambda row: _generate_vehicle_id(row, id_columns),
@@ -126,7 +133,7 @@ def load_records(tsv_path: Path, images_dir: Path | None = None) -> list[Vehicle
                 )
             )
         except Exception as exc:
-            raise ValueError(f"Invalid TSV row {row_number + 2}: {exc}") from exc
+            raise ValueError(f"Invalid CSV/TSV row {row_number + 2}: {exc}") from exc
     return records
 
 

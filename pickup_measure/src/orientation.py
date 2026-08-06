@@ -92,8 +92,22 @@ def _mirror_edge_score(rgb: np.ndarray) -> float:
 def normalize_front_to_right(
     image: Image.Image,
     minimum_confidence: float = 0.05,
+    detected_front_override: str | None = None,
 ) -> tuple[Image.Image, OrientationResult]:
     """Detect the vehicle front and mirror left-facing vehicles."""
+    if detected_front_override in {"left", "right"}:
+        flipped = detected_front_override == "left"
+        normalized = ImageOps.mirror(image) if flipped else image.copy()
+        return normalized, OrientationResult(
+            detected_front=detected_front_override,
+            normalized_front="right",
+            flipped=flipped,
+            confidence=1.0,
+            direction_score=1.0 if flipped else -1.0,
+            profile_score=0.0,
+            taillight_score=0.0,
+            mirror_edge_score=0.0,
+        )
     rgb = np.asarray(image.convert("RGB"))
     try:
         profile_score = _profile_score(image)

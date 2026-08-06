@@ -1,0 +1,44 @@
+name	Size	image_path	length_mm	width_mm	height_mm
+Ford F-150 Raptor SuperCrew 5.5	PK-XL	input\images\2026 Ford F-150 Raptor Crew-5.5.webp	5908	2200	2027
+Rivian R1S	YXL	input\images\2026 Rivian R1S.webp	5100	2083	1963
+Ford Bronco Raptor	YXL	input\images\2026 Ford Bronco Raptor.webp	4851	2177	1976
+Dodge Ramcharger 1987	YL	input\images\1987 Dodge Ramcharger.jpg	4689	2019	1913
+Land Rover Defender 90	YM+	input\images\Land Rover Defender 90 2026.png	4582	2009	1969
+Jeep Wrangler Rubicon Xtreme	YM+	input\images\2021 Jeep Wrangler Rubicon Xtreme.jpg	4341	2014	1918
+Ford Bronco 1979	YM+	input\images\1979 Ford Bronco.png	4580	2014	1918
+Ford Expedition 2001	YXXL-545	input\images\2001 Ford Expedition.jpg	5197	1997	1991
+Honda CR-V	YL	input\images\2026 Honda CR-V.jpg	4694	1867	1689
+Toyota 4Runner 2013	YL	input\images\2013 Toyota 4Runner.webp	4823	1925	1885
+Infiniti QX80	YXXL-545	input\images\2026 INFINITI QX80.webp	5364	2116	1981
+Cadillac Escalade IQ	YXXL-545	input\images\2026 Cadillac Escalade IQ.jpg	5382	2060	1948
+Cadillac Escalade ESV	YXXL-585	input\images\2026 ESCALADE ESV.jpg	5766	2060	1941
+JEEP Grand Wagoneer L	YXXL-585	input\images\2026 JEEP Grand Wagoneer L.png	5758	2123	1920
+Land Rover Range Rover Velar	YL	input\images\2023 Land Rover Range Rover Velar.png	4801	2042	1684
+Nissan Armada NISMO	YXXL-545	input\images\2026 Nissan Armada NISMO.png	5357	2116	1946
+Land Rover Defender 110 2022	YXL	input\images\Land Rover Defender 110 2022.png	5017	2009	1994
+Ford Expedition 2002	YXXL	input\images\Ford Expedition 2002.jpg	5227	1999	1991
+Land Rover Range Rover 2026	YXXL	input\images\Land Rover Range Rover 2026.webp	5253	2047	1869
+Land Rover Range Rover Sport 2026	YXL	input\images\Land Rover Range Rover Sport 2026.png	4978	2047	1821
+Tesla Model YL	YXL	input\images\Tesla Model YL.jpg	4976	1920	1669
+Toyota 4runner 2026	YXL	input\images\Toyota 4runner 2026.png	4950	1981	1844
+Mercedes-Benz G-Class 2026	YXL	input\images\Mercedes-Benz G-Class 2026.png	4874	1984	1986
+Lexus LX 2026	YXL	input\images\Lexus LX 2026.jpg	5093	1989	1895
+BMW X5 2026	YXL	input\images\BMW X5 2026.webp	4935	2004	1765
+Ram 1500 2011 REG 6.4FT	PK-M	input\images\2011 Ram 1500 REG 6.4FT.avif	5309	2017	1974
+Ford Ranger REG 6FT	PK-M	input\images\Ford Ranger Regular Cab 6FT.jpg	4811	1763	1720
+Rivian R1T CREW 4.5FT 2026	PK-M+	input\images\2026 Rivian R1T CREW 4.5FT.jpg	5514	2083	1986
+Chevrolet CK REG 8FT 1998	PK-M+	input\images\1988 Chevrolet CK REG 8FT.webp	5413	1951	1859
+Toyota Tacoma TRD DBL 5FT 2026	PK-M+	input\images\2026 Toyota Tacoma TRD DBL 5FT.jpg	5441	2030	1925
+Dodge Dakota REG 8FT 1996	PK-M+	input\images\1986-1996 Dodge Dakota REG 8FT.png	5431	1763	1709
+Chevrolet Silverado 2500HD/3500HD Double 8FT 2026	PK-XXXL	input\images\2026 Chevrolet Silverado 2500HD Double Cab, Long Bed.jpg	6515	2080	2055
+GMC Sierra 2500HD/3500HD Double 8FT 2026	PK-XXXL	input\images\2026 GMC Sierra 2500HD3500HD Double 8FT.webp	6533	2080	2055
+Ford F-250/F-350 Super Duty Crew 8FT 2007	PK-XXXL	input\images\2007 Ford F-350 Crew Cab Lariat 4WD.jpg	6655	2029	2052
+Chevrolet C/K Crew 8FT 1998	PK-XXXL	input\images\1998 Chevrolet K3500 Crew Cab Turbodiese 8FT.jpg	6352	1950	1877
+Chevrolet Silverado 3500HD Crew Cab 8FT DRW 2018	PK-W-XXL	input\images\2018 Chevrolet Silverado 3500HD Crew Cab 8FT DRW.jpg	6650	2440	2075
+Ford F-350 Super Duty Crew Cab Long Bed DRW 2005	PK-W-XXL	input\images\2005 Ford F-350 Super Duty Crew Cab Long Bed DRW.jpg	6563	2460	2032
+Chevrolet C3500 Crew Cab Long Bed DRW 1998	PK-W-XXL	input\images\1998 Chevrolet C3500 Crew Cab Long Bed DRW.jpg	6353	2400	1892
+1998 Chevrolet K3500 Extended Cab Long Bed DRW	PK-W-XL	input\IMG-PK-W-XL\1998 Chevrolet K3500 Extended Cab Long Bed DRW.jpg	6030	2395	1930
+1999 Chevrolet K3500 Crew Cab Short Bed DRW	PK-W-XL	input\IMG-PK-W-XL\1999 Chevrolet K3500 Crew Cab Short Bed DRW.jpg	5890	2395	1892
+2000 Chevrolet K3500 Extended Cab Long Bed DRW	PK-W-XL	input\IMG-PK-W-XL\2000 Chevrolet K3500 Extended Cab Long Bed DRW.jpg	6030	2395	1930
+2012 Ford F-150 SVT Raptor SuperCrew Short Bed	PK-W-XL	input\IMG-PK-W-XL\2012 Ford F-150 SVT Raptor SuperCrew Short Bed.jpg	5895	2192	1994
+2025 Ford F-350 Super Duty Regular Cab Long Bed DRW	PK-W-XL	input\IMG-PK-W-XL\2025 Ford F-350 Super Duty Regular Cab Long Bed DRW.png	5888	2438	2065

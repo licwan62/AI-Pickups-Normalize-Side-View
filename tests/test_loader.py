@@ -3,6 +3,23 @@ from PIL import Image
 from pickup_measure.src.loader import load_image, load_records
 
 
+def test_csv_input_is_parsed_with_comma_separator(tmp_path):
+    image_path = tmp_path / "truck.png"
+    Image.new("RGB", (10, 10)).save(image_path)
+    table = tmp_path / "vehicles.csv"
+    table.write_text(
+        "name,Size,image_path,length_mm,width_mm,height_mm\n"
+        "Ford F150,PK-XL,truck.png,6195,2029,1971\n",
+        encoding="utf-8",
+    )
+
+    records = load_records(table)
+
+    assert len(records) == 1
+    assert records[0].name == "Ford F150"
+    assert records[0].image_path == image_path.resolve()
+
+
 def test_id_is_generated_from_all_fields_except_image_path(tmp_path):
     images = tmp_path / "images"
     images.mkdir()
@@ -37,6 +54,35 @@ def test_missing_explicit_path_falls_back_to_configured_images_dir(tmp_path):
     assert records[0].id == "Ford_F150_PK-XL_6195_2029_1971"
     assert records[0].image_path == (images / "truck.png").resolve()
     assert records[0].size == "PK-XL"
+
+
+def test_rows_with_empty_image_path_are_skipped(tmp_path):
+    image_path = tmp_path / "truck.png"
+    Image.new("RGB", (10, 10)).save(image_path)
+    table = tmp_path / "vehicles.tsv"
+    table.write_text(
+        "name\tSize\timage_path\tlength_mm\twidth_mm\theight_mm\n"
+        "Missing Truck\tPK-XL\t   \t6000\t2000\t2000\n"
+        "Available Truck\tPK-XL\ttruck.png\t6100\t2100\t2050\n",
+        encoding="utf-8",
+    )
+
+    records = load_records(table)
+
+    assert len(records) == 1
+    assert records[0].name == "Available Truck"
+    assert records[0].image_path == image_path.resolve()
+
+
+def test_all_empty_image_paths_produce_no_records(tmp_path):
+    table = tmp_path / "vehicles.tsv"
+    table.write_text(
+        "name\tSize\timage_path\tlength_mm\twidth_mm\theight_mm\n"
+        "Missing Truck\tPK-XL\t\t6000\t2000\t2000\n",
+        encoding="utf-8",
+    )
+
+    assert load_records(table) == []
 
 
 def test_generated_id_normalizes_filename_unsafe_characters(tmp_path):

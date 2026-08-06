@@ -3,6 +3,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 from pickup_measure.src.detector import OpenCVVehicleDetector
+from pickup_measure.src.geometry import Bounds
 
 
 def test_detects_vehicle_on_clean_background():
@@ -47,3 +48,24 @@ def test_inner_rim_detection_still_finds_outer_tyre_contact(monkeypatch):
 
     assert ground is not None
     assert ground >= 268
+
+
+def test_known_vehicle_aspect_uses_complex_scene_fallback(monkeypatch):
+    image = Image.new("RGB", (600, 240), "white")
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((90, 80, 510, 180), fill=(45, 65, 85))
+    draw.rectangle((250, 45, 410, 100), fill=(45, 65, 85))
+    draw.ellipse((135, 155, 205, 225), fill=(20, 20, 20))
+    draw.ellipse((405, 155, 475, 225), fill=(20, 20, 20))
+
+    detector = OpenCVVehicleDetector()
+    expected = Bounds(left=50, right=550, roof=60, ground=190)
+    monkeypatch.setattr(
+        detector,
+        "_detect_complex_scene",
+        lambda **kwargs: expected,
+    )
+
+    bounds = detector.detect(image, expected_aspect=4.0)
+
+    assert bounds == expected
