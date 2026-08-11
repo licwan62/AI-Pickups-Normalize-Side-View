@@ -23,5 +23,5 @@ detection:
   perspective_correction: false
 quality:
   pass_max_percent: 3
-  warning_max_percent: 15
-  error_max_percent: 35
+  warning_max_percent: 10
+  error_max_percent: 15

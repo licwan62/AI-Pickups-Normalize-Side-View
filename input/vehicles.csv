@@ -51,3 +51,45 @@ name,length_mm,width_mm,height_mm,Size,image_path
 2025 Genesis G80 Sport,5004,1925,1466,3XL,input/images/3XL/2025 Genesis G80 Sport.png
 2014 BMW 5 Series GT,4999,1900,1560,3XL,input/images/3XL/2014 BMW 5 Series GT.webp
 2026 Hyundai IONIQ 6 N,4935,1941,1496,3XL,input/images/3XL/2026 Hyundai IONIQ 6 N.png
+2004 Toyota Tundra Double Cab Standard Bed,5845,2014,1905,PK-L,input/images/PK-L/2004 Toyota Tundra Double Cab Standard Bed.jpg
+2012 Ford F-150 SVT Raptor SuperCrew Short Bed,5895,2192,1994,PK-L,input/images/PK-L/2012 Ford F-150 SVT Raptor SuperCrew Short Bed.jpg
+2024 Ford F-150 SuperCab Short Bed,5893,2029,1961,PK-L,input/images/PK-L/2024 Ford F-150 SuperCab Short Bed.png
+2024 Ford F-150 SuperCrew Short Bed,5893,2029,1961,PK-L,input/images/PK-L/2024 Ford F-150 SuperCrew Short Bed.png
+2024 Ram 2500 Regular Cab Long Bed,5893,2017,2037,PK-L,input/images/PK-L/2024 Ram 2500 Regular Cab Long Bed.png
+1999 Ford F-150 Regular Cab Short Bed,5283,2014,1918,PK-M,input/images/PK-M/1999 Ford F-150 Regular Cab Short Bed.jpg
+2002 Dodge Ram 1500 Regular Cab Short Bed,5276,2029,1905,PK-M,input/images/PK-M/2002 Dodge Ram 1500 Regular Cab Short Bed.jpg
+2013 Toyota Tacoma Access Cab Long Bed,5286,1895,1786,PK-M,input/images/PK-M/2013 Toyota Tacoma Access Cab Long Bed.png
+2005 Cadillac Escalade EXT Crew Cab Short Bed,5624,2019,1920,PK-M+,input/images/PK-M+/2005 Cadillac Escalade EXT Crew Cab Short Bed.jpg
+2005 Chevrolet Avalanche 1500 Crew Cab Short Bed,5631,2027,1862,PK-M+,input/images/PK-M+/2005 Chevrolet Avalanche 1500 Crew Cab Short Bed.jpg
+2000 Ford F-250 Super Duty SuperCab Long Bed,6177,2029,2042,PK-XL,input/images/PK-XL/2000 Ford F-250 Super Duty SuperCab Long Bed.jpg
+2020 Ford F-150 SuperCrew Short Bed,6190,2029,1963,PK-XL,input/images/PK-XL/2020 Ford F-150 SuperCrew Short Bed.png
+2021 Ford F-150 Raptor SuperCrew Short Bed,5908,2200,2027,PK-XL,input/images/PK-XL/2021 Ford F-150 Raptor SuperCrew Short Bed.png
+2024 Chevrolet Silverado 2500HD Double Cab Short Bed,6109,2080,2032,PK-XL,input/images/PK-XL/2024 Chevrolet Silverado 2500HD Double Cab Short Bed.png
+2026 GMC Sierra 2500HD Regular Cab Long Bed,6002,2080,2055,PK-XL,input/images/PK-XL/2026 GMC Sierra 2500HD Regular Cab Long Bed.png
+2026 GMC Sierra 2500HD Crew Cab Standard Bed,6350,2080,2062,PK-XXL,input/images/PK-XXL/2026 GMC Sierra 2500HD Crew Cab Standard Bed.png
+2026 Toyota Tundra Double Cab Long Bed,6414,2037,1981,PK-XXL,input/images/PK-XXL/2026 Toyota Tundra Double Cab Long Bed.jpg
+2020 Ford F-150 SuperCab Long Bed,6363,2029,1961,PK-XXL,input/images/PK-XXL/2020 Ford F-150 SuperCab Long Bed.jpg
+2026 Chevrolet Silverado 2500HD Double Cab Long Bed,6515,2080,2055,PK-XXXL,input/images/PK-XXXL/2026 Chevrolet Silverado 2500HD Double Cab Long Bed.png
+2026 Ford F-250 Super Duty Crew Cab Long Bed,6761,2032,2068,PK-XXXL,input/images/PK-XXXL/2026 Ford F-250 Super Duty Crew Cab Long Bed.png
+2026 GMC Sierra 2500HD Crew Cab Long Bed,6756,2080,2062,PK-XXXL,input/images/PK-XXXL/2026 GMC Sierra 2500HD Crew Cab Long Bed.png
+2026 Ram 2500 Crew Cab Long Bed,6624,2017,2035,PK-XXXL,input/images/PK-XXXL/2026 Ram 2500 Crew Cab Long Bed.png
+2026 Chevrolet Equinox EV,4841,1953,1646,YL,input/images/YL/2026 Chevrolet Equinox EV.png
+2025 Honda Passport,4839,1996,1834,YL,input/images/YL/2025 Honda Passport.png
+2026 Hyundai Santa Fe,4831,1900,1770,YL,input/images/YL/2026 Hyundai Santa Fe.png
+2021 Jeep Grand Cherokee,4821,1943,1760,YL,input/images/YL/2021 Jeep Grand Cherokee.png
+2026 Mercedes-Benz GLB-Class,4633,1834,1661,YM,input/images/YM/2026 Mercedes-Benz GLB-Class.png
+2024 Hyundai Tucson,4630,1864,1666,YM,input/images/YM/2024 Hyundai Tucson.png
+2025 Toyota RAV4,4610,1864,1742,YM,input/images/YM/2025 Toyota RAV4.png
+2023 Ford Bronco Sport,4387,1887,1814,YM,input/images/YM/2023 Ford Bronco Sport.png
+2026 Kia EV9,5014,1979,1781,YXL,input/images/YXL/2026 Kia EV9.png
+2026 Lexus GX,5006,1999,1920,YXL,input/images/YXL/2026 Lexus GX.png
+2021 Land Rover Discovery,4956,2073,1887,YXL,input/images/YXL/2021 Land Rover Discovery.png
+2026 BMW X6,4953,2019,1694,YXL,input/images/YXL/2026 BMW X6.png
+2026 Mercedes-Benz GLS-Class,5243,2029,1824,YXXL,input/images/YXXL/2026 Mercedes-Benz GLS-Class.webp
+2026 Cadillac Vistiq,5222,2027,1803,YXXL,input/images/YXXL/2026 Cadillac Vistiq.png
+2022 Toyota Sequoia,5210,2029,1956,YXXL,input/images/YXXL/2022 Toyota Sequoia.png
+2026 Rivian R1S,5100,2083,1963,YXXL,input/images/YXXL/2026 Rivian R1S.png
+2025 Jeep Wagoneer,5453,2123,2024,YXXL-545,input/images/YXXL-545/2025 Jeep Wagoneer.png
+2026 Cadillac Escalade,5382,2060,1948,YXXL-545,input/images/YXXL-545/2026 Cadillac Escalade.png
+2026 Cadillac Escalade ESV,5766,2060,1941,YXXL-585,input/images/YXXL-585/2026 Cadillac Escalade ESV.png
+2025 Jeep Wagoneer L,5758,2123,2022,YXXL-585,input/images/YXXL-585/2025 Jeep Wagoneer L.png

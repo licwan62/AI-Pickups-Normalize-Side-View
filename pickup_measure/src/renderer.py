@@ -180,8 +180,9 @@ def render_dimensioned_vehicle_svg(
     width_mm: float,
     height_mm: float,
     style: AnnotationStyle = AnnotationStyle(),
+    model_name: str = "",
 ) -> Path:
-    """Render the vehicle with overall LENGTH and HEIGHT dimensions only."""
+    """Render the vehicle name and overall LENGTH/HEIGHT dimensions."""
     if width_mm <= 0 or height_mm <= 0:
         raise ValueError("SVG dimensions must be positive")
     margin_left = ANNOTATED_MARGIN_LEFT_MM
@@ -258,6 +259,15 @@ def render_dimensioned_vehicle_svg(
         font_size=style.font_size_mm,
         font_family=style.font_family,
     ))
+    if model_name:
+        drawing.add(drawing.text(
+            model_name,
+            insert=(origin_x + width_mm / 2, canvas_height - 45),
+            text_anchor="middle",
+            font_size=style.font_size_mm,
+            font_family=style.font_family,
+            fill=style.dimension_color,
+        ))
     drawing.save(pretty=True)
     return output_path
 

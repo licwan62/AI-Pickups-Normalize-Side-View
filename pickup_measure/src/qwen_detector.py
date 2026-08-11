@@ -833,65 +833,63 @@ class QwenVehicleDetector(VehicleDetector):
     def _trim_antenna_from_bounds(
         image: Image.Image,
         bounds: Bounds,
+        background_type: str | None = None,
     ) -> Bounds:
-        """Detect and remove a thin antenna protrusion from the top of the bbox.
+        """Move the roof to the highest horizontally supported body pixel.
 
-        Scans the top portion of the bounding box row-by-row. If the uppermost
-        rows contain only a narrow vertical strip (antenna) and then suddenly
-        widen into the vehicle body, the roof is moved down to the body top.
-        Returns the original bounds unchanged when no antenna is detected.
+        A horizontal opening removes thin vertical antenna pixels while keeping
+        even a short or sloping roof segment.  The previous row-span heuristic
+        waited for 15% of the vehicle width to become foreground, which could
+        discard the upper part of a curved roof before the row became "wide".
         """
+        if background_type == "environment":
+            # A single background colour is not a safe foreground model for a
+            # natural scene.  In that case retain Qwen's semantic boundary.
+            return bounds
+
         rgb = np.asarray(image.convert("RGB"))
         roi = rgb[bounds.roof:bounds.ground, bounds.left:bounds.right]
         if roi.size == 0:
             return bounds
-        gray = cv2.cvtColor(roi, cv2.COLOR_RGB2GRAY)
-        height, width = gray.shape
 
-        # Use Otsu's thresholding to separate foreground from background
-        # without relying on corner sampling (which can be contaminated by
-        # the vehicle body when the bbox is tight).
-        _, fg_mask = cv2.threshold(
-            gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU,
+        # Estimate the studio/transparent-composited background from the outer
+        # image frame, where the vehicle normally cannot dominate the samples.
+        frame_pixels = np.concatenate(
+            (rgb[0, :, :], rgb[-1, :, :], rgb[:, 0, :], rgb[:, -1, :]),
+            axis=0,
+        ).astype(np.int16)
+        background = np.median(frame_pixels, axis=0)
+        frame_distance = np.max(np.abs(frame_pixels - background), axis=1)
+        # JPEG ringing around a white background is usually only a few levels.
+        # Adapt to mild noise without letting a varied frame erase a pale roof.
+        foreground_threshold = max(
+            8.0,
+            float(np.percentile(frame_distance, 90)) + 4.0,
         )
+        colour_distance = np.max(
+            np.abs(roi.astype(np.int16) - background),
+            axis=2,
+        )
+        foreground = (colour_distance >= foreground_threshold).astype(np.uint8)
 
-        # For each row, measure the horizontal span of foreground pixels.
-        row_spans: list[int] = []
-        for row_idx in range(height):
-            cols = np.flatnonzero(fg_mask[row_idx])
-            if cols.size == 0:
-                row_spans.append(0)
-            else:
-                row_spans.append(int(cols[-1] - cols[0] + 1))
-
-        # Find the first row where the span is "wide" (vehicle body).
-        # A row is considered wide if its span exceeds a fraction of the bbox
-        # width. The antenna is narrow; the body is wide.
-        body_width_threshold = max(20, int(width * 0.15))
-        # Require several consecutive wide rows to avoid noise.
-        min_consecutive = max(3, int(height * 0.02))
-
-        body_top_rel = None
-        consecutive = 0
-        for row_idx, span in enumerate(row_spans):
-            if span >= body_width_threshold:
-                consecutive += 1
-                if consecutive >= min_consecutive:
-                    body_top_rel = row_idx - consecutive + 1
-                    break
-            else:
-                consecutive = 0
-
-        if body_top_rel is None:
+        # Remove vertical strokes narrower than about 1% of vehicle width.
+        # Any roof segment at least this wide remains eligible as the crop top;
+        # it need not first grow to a large fraction of the whole vehicle.
+        support_width = max(3, int(np.ceil(roi.shape[1] * 0.01)))
+        supported_body = cv2.morphologyEx(
+            foreground,
+            cv2.MORPH_OPEN,
+            np.ones((1, support_width), dtype=np.uint8),
+        )
+        supported_rows = np.flatnonzero(np.any(supported_body, axis=1))
+        if supported_rows.size == 0:
             return bounds
+        body_top_rel = int(supported_rows[0])
 
-        # Only trim if the antenna region is small relative to the bbox height
-        # (avoids false positives when the bbox is already tight).
-        antenna_height = body_top_rel
+        # The semantic bbox should already be close.  Refuse a large correction
+        # because it more likely indicates an unsuitable background model.
         bbox_height = bounds.ground - bounds.roof
-        if antenna_height < max(3, int(bbox_height * 0.03)):
-            return bounds
-        if antenna_height > int(bbox_height * 0.25):
+        if body_top_rel > int(bbox_height * 0.25):
             return bounds
 
         return Bounds(
@@ -1274,7 +1272,11 @@ class QwenVehicleDetector(VehicleDetector):
                     image.width,
                     image.height,
                 )
-                trimmed_bounds = self._trim_antenna_from_bounds(image, bounds)
+                trimmed_bounds = self._trim_antenna_from_bounds(
+                    image,
+                    bounds,
+                    background_type=background_type,
+                )
                 antenna_trimmed = trimmed_bounds.roof > bounds.roof
                 bounds = trimmed_bounds
                 self.last_attempt_bounds = bounds
