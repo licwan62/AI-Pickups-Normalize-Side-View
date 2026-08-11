@@ -158,9 +158,9 @@ def process_vehicle(
     exporter = Exporter(output_dir)
     # A blocked or failed rerun must not leave a stale SVG that looks current.
     vehicle_svg = output_dir / "vehicle.svg"
-    annotated_svg = size_output_dir / f"{record.id}.svg"
+    final_svg = size_output_dir / f"{record.id}.svg"
     vehicle_svg.unlink(missing_ok=True)
-    annotated_svg.unlink(missing_ok=True)
+    final_svg.unlink(missing_ok=True)
     for stale_name in (
         "annotated.svg",
         "annotated.pdf",
@@ -203,6 +203,15 @@ def process_vehicle(
             detection_payload = json.loads(
                 detection_path.read_text(encoding="utf-8")
             )
+            saved_background_type = str(
+                detection_payload.get("background_type", "unknown")
+            ).lower()
+            if saved_background_type in {
+                "white",
+                "transparent",
+                "environment",
+            }:
+                api_background_type = saved_background_type
             raw_crop_chassis_hint = detection_payload.get(
                 "crop_body_chassis_line"
             )
@@ -574,11 +583,24 @@ def process_vehicle(
     elif detection_payload is not None:
         detection_payload.update({
             "schema_version": 2,
+            "bounds": asdict(bounds),
             "perspective_quad": perspective_quad,
             "rectified_trim": rectified_trim,
-            "boundary_touch_points": boundary_touch_points,
-            "image_wheel_contacts": wheel_contact_points,
-            "body_chassis_line": body_chassis_line,
+            "boundary_touch_points": (
+                boundary_touch_points
+                if boundary_touch_points is not None
+                else detection_payload.get("boundary_touch_points")
+            ),
+            "image_wheel_contacts": (
+                wheel_contact_points
+                if wheel_contact_points is not None
+                else detection_payload.get("image_wheel_contacts")
+            ),
+            "body_chassis_line": (
+                body_chassis_line
+                if body_chassis_line is not None
+                else detection_payload.get("body_chassis_line")
+            ),
             "crop_body_chassis_line": crop_chassis_hint,
             "background_type": background_type,
             "front": api_front,
@@ -596,14 +618,16 @@ def process_vehicle(
         set_stage("RENDER_EXPORT")
         render_dimensioned_vehicle_svg(
             image=crop,
-            output_path=vehicle_svg,
+            output_path=final_svg,
             width_mm=record.length_mm,
             height_mm=record.height_mm,
             style=annotation_style,
+            model_name=record.name,
         )
         LOGGER.info(
-            "%s: exported crop-only vehicle.svg at %.1f mm x %.1f mm",
+            "%s: exported no-measure result %s at %.1f mm x %.1f mm",
             record.id,
+            final_svg,
             record.length_mm,
             record.height_mm,
         )
@@ -681,7 +705,7 @@ def process_vehicle(
     render_annotated_svg(
         image=crop,
         geometry=annotation,
-        output_path=annotated_svg,
+        output_path=final_svg,
         width_mm=record.length_mm,
         height_mm=record.height_mm,
         model_name=record.name,
@@ -702,7 +726,7 @@ def process_vehicle(
     LOGGER.info(
         "%s: exported vehicle.svg and %s at %.1f mm x %.1f mm",
         record.id,
-        annotated_svg,
+        final_svg,
         record.length_mm,
         record.height_mm,
     )
@@ -762,7 +786,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-measure",
         dest="measure",
         action="store_false",
-        help="Only crop/normalize and export vehicle.svg (default)",
+        help="Only crop/normalize and export the final <id>.svg (default)",
     )
     parser.set_defaults(measure=False)
     parser.add_argument("--verbose", action="store_true")
@@ -788,14 +812,13 @@ def main(argv: list[str] | None = None) -> int:
         progress_state = {"stage": "INITIALIZE"}
         terminal_print(f"[{index}/{total_records}] {record.id}")
         final_svg = args.output / record.size / f"{record.id}.svg"
-        vehicle_svg = args.output / record.size / record.id / "vehicle.svg"
         annotation_points = (
             args.output / record.size / record.id / "annotation_points.json"
         )
         already_generated = (
             final_svg.is_file() and annotation_points.is_file()
             if args.measure
-            else vehicle_svg.is_file()
+            else final_svg.is_file()
         )
         if args.continue_mode and already_generated:
             LOGGER.info("%s: already generated; skipped by --continue", record.id)

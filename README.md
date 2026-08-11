@@ -10,7 +10,7 @@ python main.py
 python main.py --no-measure
 ```
 
-该模式只定位、校正方向和透视、紧密裁剪并放大导出 `vehicle.svg`，默认标注整车 `LENGTH` 和 `HEIGHT`；不会执行局部尺寸测量和比例质检，也不会生成红框、HOOD/CAB/NECK/BED 标注、`annotation_points.json`、单车 `measurements.tsv` 或批次 `measurements.tsv`。
+该模式只定位、校正方向和透视、紧密裁剪，并在 Size 目录直接导出最终 `<id>.svg`，默认标注车型名称、整车 `LENGTH` 和 `HEIGHT`；不会执行局部尺寸测量和比例质检，也不会生成红框、HOOD/CAB/NECK/BED 标注、`annotation_points.json`、单车 `measurements.tsv` 或批次 `measurements.tsv`。同名过程目录中不会再放置 `vehicle.svg`。
 
 如需使用原有的完整测量、红框标注和尺寸结果流程，请显式指定：
 
@@ -124,15 +124,14 @@ output/PK-XL/
     ├── source.jpg
     ├── crop_source.png
     ├── orientation.json
-    ├── vehicle.svg
     ├── points.json
     ├── annotation_points.json
     ├── qc_report.json
     └── measurements.tsv
 ```
 
-- `vehicle.svg`：仅包含按真实车长、车高缩放的车辆图片。
-- `<id>.svg`：Size 目录下的最终交付文件；包含白底、50% 透明车辆图、红色结构线框和外置尺寸标注。
+- `<id>.svg`：Size 目录下的最终交付文件。`--no-measure` 时包含紧密裁剪车辆、车型名称及整车 `LENGTH`、`HEIGHT` 标注；`--measure` 时包含白底、50% 透明车辆图、红色结构线框和完整外置尺寸标注。
+- `vehicle.svg`：仅在 `--measure` 模式下生成于过程目录，包含按真实车长、车高缩放的车辆图片。
 - `crop_source.png`：紧密裁剪的原始像素，仅作为 SVG 内嵌图源，不需要单独导入工程。
 - `orientation.json`：车头方向识别结果、置信度、翻转状态及各项判断分数。车头在左时，`crop_source.png` 会水平翻转为车头朝右后再进入尺寸识别。
 - `points.json`：自动或人工确定的裁剪边界。
@@ -159,7 +158,7 @@ NAME  SIZE  L-MM  W-MM  H-MM  CAB-H  HOOD-H  NECK-H  BED-H
 
 ## 6. Illustrator 导入说明
 
-请导入 Size 目录下的 `<id>.svg`，或过程目录中的 `vehicle.svg`；不要把 `crop_source.png` 作为最终工程图导入。SVG 的 `width`、`height` 和 `viewBox` 使用毫米定义，因此 Illustrator 中的物理车长和车高以 TSV 数据为准，与栅格图的 PPI 无关。
+请导入 Size 目录下的最终 `<id>.svg`；不要把 `crop_source.png` 作为最终工程图导入。SVG 的 `width`、`height` 和 `viewBox` 使用毫米定义，因此 Illustrator 中的物理车长和车高以 TSV 数据为准，与栅格图的 PPI 无关。
 
 Size 目录下的 `<id>.svg` 为了把总长、总高和局部尺寸线放到车辆两侧，画板会比车辆本体更大；车辆本体的尺寸仍然严格等于 TSV 中的 `length_mm × height_mm`。
 

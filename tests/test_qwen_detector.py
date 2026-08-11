@@ -401,3 +401,34 @@ def test_trim_antenna_from_bounds_no_antenna():
 
     assert trimmed.roof == 10
     assert trimmed == bounds
+
+
+def test_trim_antenna_preserves_short_sloping_roof_top():
+    """The crop starts at the roof, not where the curved roof becomes wide."""
+    img = Image.new("RGB", (220, 120), "white")
+    draw = ImageDraw.Draw(img)
+    # The roof begins with a short plateau and then widens gradually.  Its first
+    # row is intentionally much narrower than 15% of the vehicle bbox.
+    draw.polygon(
+        [(90, 20), (102, 20), (150, 38), (205, 105), (15, 105), (75, 38)],
+        fill=(220, 220, 220),
+    )
+    draw.line([45, 0, 45, 62], fill="black", width=2)
+
+    bounds = Bounds(left=10, right=210, roof=0, ground=105)
+    trimmed = QwenVehicleDetector._trim_antenna_from_bounds(img, bounds)
+
+    assert trimmed.roof == 20
+
+
+def test_trim_antenna_skips_environment_background():
+    img = Image.new("RGB", (200, 100), "gray")
+    bounds = Bounds(left=10, right=190, roof=5, ground=90)
+
+    trimmed = QwenVehicleDetector._trim_antenna_from_bounds(
+        img,
+        bounds,
+        background_type="environment",
+    )
+
+    assert trimmed == bounds

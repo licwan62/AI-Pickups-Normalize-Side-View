@@ -241,9 +241,11 @@ def test_no_measure_only_exports_crop_svg(tmp_path):
     )
 
     assert status == "EXPORTED"
-    svg = (item_dir / "vehicle.svg").read_text(encoding="utf-8")
+    final_svg = item_dir.parent / f"{record.id}.svg"
+    svg = final_svg.read_text(encoding="utf-8")
     assert "LENGTH  6000" in svg
     assert "HEIGHT  2000" in svg
+    assert "Plain Truck" in svg
     assert "HOOD" not in svg
     assert "CAB" not in svg
     assert "NECK" not in svg
@@ -252,7 +254,39 @@ def test_no_measure_only_exports_crop_svg(tmp_path):
     assert not (item_dir / "measurements.tsv").exists()
     assert not (item_dir / "annotation_points.json").exists()
     assert not (item_dir / "qc_report.json").exists()
-    assert not (item_dir.parent / f"{record.id}.svg").exists()
+    assert final_svg.exists()
+    assert not (item_dir / "vehicle.svg").exists()
+
+
+def test_no_measure_continue_uses_size_level_final_svg(tmp_path, capsys):
+    image_path = tmp_path / "truck.png"
+    Image.new("RGB", (320, 120), "gray").save(image_path)
+    table = tmp_path / "vehicles.tsv"
+    table.write_text(
+        "name\tSize\timage_path\tlength_mm\twidth_mm\theight_mm\n"
+        "Plain Truck\tTEST\ttruck.png\t6000\t2000\t2000\n",
+        encoding="utf-8",
+    )
+    config = tmp_path / "config.yaml"
+    config.write_text("{}\n", encoding="utf-8")
+    output = tmp_path / "output"
+    vehicle_id = "Plain_Truck_TEST_6000_2000_2000"
+    final_svg = output / "TEST" / f"{vehicle_id}.svg"
+    final_svg.parent.mkdir(parents=True)
+    final_svg.write_text("keep final SVG", encoding="utf-8")
+
+    result = main([
+        "--continue",
+        "--no-measure",
+        "--input", str(table),
+        "--images", str(tmp_path),
+        "--output", str(output),
+        "--config", str(config),
+    ])
+
+    assert result == 0
+    assert "⏭️ SKIPPED" in capsys.readouterr().out
+    assert final_svg.read_text(encoding="utf-8") == "keep final SVG"
 
 
 def test_terminal_summary_names_failed_vehicle_and_stage(tmp_path, capsys):
