@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 output/
-input/vehicles.tsv
-input/images/*
+input/*
+output/*
 !input/images/.gitkeep
+!output/.gitkeep
