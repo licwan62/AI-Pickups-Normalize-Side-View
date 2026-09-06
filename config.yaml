@@ -1,6 +1,6 @@
-input_tsv: input/vehicles.csv
-images_dir: input/images
-output_dir: output
+input_tsv: data/vehicles.csv
+images_dir: img/input
+output_dir: img/output
 output:
   embed_source_directly: true
 annotation:

@@ -750,7 +750,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--images", type=Path, default=Path("input/images"),
         help="Default image directory; filenames match vehicle IDs",
     )
-    parser.add_argument("--output", type=Path, default=Path("output"), help="Output directory")
+    parser.add_argument(
+        "--output", type=Path, default=None,
+        help="Output directory (defaults to output_dir in config.yaml, or output)",
+    )
     parser.add_argument(
         "--config", type=Path, default=Path("config.yaml"), help="YAML configuration path"
     )
@@ -795,9 +798,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    configure_logging(args.output / "pickup_measure.log", args.verbose)
     try:
         settings = load_settings(args.config)
+        args.output = args.output or settings.output_dir
+        configure_logging(args.output / "pickup_measure.log", args.verbose)
         input_path = args.input or settings.input_path
         records = load_records(input_path, args.images)
     except Exception as exc:

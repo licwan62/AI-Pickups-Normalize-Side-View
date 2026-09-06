@@ -314,3 +314,41 @@ def test_terminal_summary_names_failed_vehicle_and_stage(tmp_path, capsys):
     assert "❌ LOAD_IMAGE [Image not found:" in captured.out
     assert "Run complete: 0 exported, 0 skipped, 0/1 complete, 1 failed" in captured.out
     assert f"❌ {vehicle_id} — LOAD_IMAGE" in captured.out
+
+
+def test_main_uses_configured_output_and_cli_override(tmp_path, monkeypatch):
+    import importlib
+
+    pipeline = importlib.import_module("pickup_measure.main")
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    config = config_dir / "config.yaml"
+    config.write_text("output_dir: img/output\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    record = VehicleRecord("TRUCK", "Truck", tmp_path / "truck.png", 6000, 2000, 2000)
+    monkeypatch.setattr(pipeline, "load_records", lambda *args: [record])
+    processed = []
+
+    def export(record, output_root, **kwargs):
+        processed.append(output_root.resolve())
+        svg = output_root / record.size / f"{record.id}.svg"
+        svg.parent.mkdir(parents=True, exist_ok=True)
+        svg.write_text("exported", encoding="utf-8")
+        return "EXPORTED"
+
+    monkeypatch.setattr(pipeline, "process_vehicle", export)
+    for extra_args, output in [
+        ([], config_dir / "img/output"),
+        (["--output", "override"], tmp_path / "override"),
+    ]:
+        argv = ["--config", str(config), *extra_args]
+        assert main(argv) == 0
+        assert processed[-1] == output.resolve()
+        assert (output / "pickup_measure.log").is_file()
+        assert (output / "run_summary.json").is_file()
+        count = len(processed)
+        assert main([*argv, "--continue"]) == 0
+        assert len(processed) == count
+        summary = json.loads((output / "run_summary.json").read_text(encoding="utf-8"))
+        assert summary[0]["status"] == "SKIPPED"
+    assert not (tmp_path / "output").exists()

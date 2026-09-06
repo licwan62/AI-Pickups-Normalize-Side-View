@@ -51,6 +51,7 @@ class Settings:
     annotation: AnnotationStyle = AnnotationStyle()
     quality: QualitySettings = QualitySettings()
     detection: DetectionSettings = DetectionSettings()
+    output_dir: Path = Path("output")
 
 
 def load_settings(path: Path) -> Settings:
@@ -133,6 +134,7 @@ def load_settings(path: Path) -> Settings:
         raise ValueError("detection.timeout_seconds must be positive")
     return Settings(
         input_path=input_path,
+        output_dir=(path.parent / Path(str(payload.get("output_dir", "output")))).resolve(),
         output=OutputSettings(ppi=ppi),
         annotation=annotation,
         quality=quality,

@@ -82,3 +82,14 @@ def test_loads_qwen_detection_settings(tmp_path):
     assert settings.detection.timeout_seconds == 45
     assert settings.detection.manual_fallback is False
     assert settings.detection.perspective_correction is False
+
+
+def test_output_directory_paths(tmp_path):
+    config = tmp_path / "config.yaml"
+    for configured, expected in [
+        ("{}\n", tmp_path / "output"),
+        ("output_dir: img/output\n", tmp_path / "img/output"),
+        (f"output_dir: {tmp_path.as_posix()}/absolute\n", tmp_path / "absolute"),
+    ]:
+        config.write_text(configured, encoding="utf-8")
+        assert load_settings(config).output_dir == expected.resolve()
