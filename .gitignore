@@ -2,8 +2,4 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
-output/
-input/*
-output/*
-!input/images/.gitkeep
-!output/.gitkeep
+img/*
