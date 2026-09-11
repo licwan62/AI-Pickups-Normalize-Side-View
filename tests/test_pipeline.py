@@ -1,3 +1,4 @@
+import hashlib
 import json
 
 from PIL import Image
@@ -180,6 +181,19 @@ def test_continue_skips_an_already_generated_id(tmp_path, capsys):
         }),
         encoding="utf-8",
     )
+    image_hash = hashlib.sha256(image_path.read_bytes()).hexdigest()
+    (tmp_path / "image_generation_hashes.json").write_text(
+        json.dumps({
+            "version": 1,
+            "images": {
+                image_path.resolve().as_posix(): {
+                    "sha256": image_hash,
+                    "record_id": vehicle_id,
+                }
+            },
+        }),
+        encoding="utf-8",
+    )
 
     result = main([
         "--continue",
@@ -194,7 +208,7 @@ def test_continue_skips_an_already_generated_id(tmp_path, capsys):
     assert result == 0
     assert captured.err == ""
     assert f"[1/1] {vehicle_id}" in captured.out
-    assert "⏭️ SKIPPED [already generated]" in captured.out
+    assert "SKIPPED [unchanged image hash]" in captured.out
     assert captured.out.strip().endswith(
         "Run complete: 0 exported, 1 skipped, 1/1 complete, 0 failed"
     )
@@ -215,6 +229,95 @@ def test_continue_flag_uses_a_safe_attribute_name():
     args = build_parser().parse_args(["--continue"])
 
     assert args.continue_mode is True
+
+
+def test_continue_skips_cached_qwen_validation_failure(tmp_path, monkeypatch, capsys):
+    image_path = tmp_path / "truck.png"
+    Image.new("RGB", (320, 120), "gray").save(image_path)
+    table = tmp_path / "vehicles.tsv"
+    table.write_text(
+        "name\tSize\timage_path\tlength_mm\twidth_mm\theight_mm\n"
+        "Failed Truck\tTEST\ttruck.png\t6000\t2000\t2000\n",
+        encoding="utf-8",
+    )
+    config = tmp_path / "config.yaml"
+    config.write_text("{}\n", encoding="utf-8")
+    output = tmp_path / "output"
+    calls = 0
+    error = (
+        "Qwen response validation failed after repair: "
+        "Qwen body_chassis_line_1000 must stay between the two wheel centers"
+    )
+
+    def fail(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        kwargs["progress_state"]["stage"] = "DETECT"
+        raise RuntimeError(error)
+
+    monkeypatch.setattr("pickup_measure.main.process_vehicle", fail)
+
+    common_args = [
+        "--input", str(table),
+        "--images", str(tmp_path),
+        "--output", str(output),
+        "--config", str(config),
+    ]
+    assert main(common_args) == 1
+    manifest = json.loads(
+        (tmp_path / "image_generation_hashes.json").read_text(encoding="utf-8")
+    )
+    entry = manifest["images"][image_path.resolve().as_posix()]
+    assert entry["status"] == "FAILED"
+    assert entry["error"] == error
+    assert entry["stage"] == "DETECT"
+
+    capsys.readouterr()
+    assert main(["--continue", *common_args]) == 1
+    captured = capsys.readouterr()
+    assert calls == 1
+    assert f"SKIPPED [cached failure: {error}]" in captured.out
+    assert "Run complete: 0 exported, 1 skipped, 0/1 complete, 1 failed" in captured.out
+    summary = json.loads((output / "run_summary.json").read_text(encoding="utf-8"))
+    assert summary[0]["status"] == "CACHED_FAILURE"
+    assert summary[0]["error"] == error
+
+    Image.new("RGB", (321, 120), "gray").save(image_path)
+    assert main(["--continue", *common_args]) == 1
+    assert calls == 2
+
+
+def test_transient_qwen_failure_is_not_cached(tmp_path, monkeypatch):
+    image_path = tmp_path / "truck.png"
+    Image.new("RGB", (320, 120), "gray").save(image_path)
+    table = tmp_path / "vehicles.tsv"
+    table.write_text(
+        "name\tSize\timage_path\tlength_mm\twidth_mm\theight_mm\n"
+        "Failed Truck\tTEST\ttruck.png\t6000\t2000\t2000\n",
+        encoding="utf-8",
+    )
+    config = tmp_path / "config.yaml"
+    config.write_text("{}\n", encoding="utf-8")
+    calls = 0
+
+    def fail(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        raise RuntimeError("Qwen API request timed out")
+
+    monkeypatch.setattr("pickup_measure.main.process_vehicle", fail)
+    common_args = [
+        "--continue",
+        "--input", str(table),
+        "--images", str(tmp_path),
+        "--output", str(tmp_path / "output"),
+        "--config", str(config),
+    ]
+
+    assert main(common_args) == 1
+    assert main(common_args) == 1
+    assert calls == 2
+    assert not (tmp_path / "image_generation_hashes.json").exists()
 
 
 def test_no_measure_is_the_default_cli_mode():
@@ -274,6 +377,19 @@ def test_no_measure_continue_uses_size_level_final_svg(tmp_path, capsys):
     final_svg = output / "TEST" / f"{vehicle_id}.svg"
     final_svg.parent.mkdir(parents=True)
     final_svg.write_text("keep final SVG", encoding="utf-8")
+    image_hash = hashlib.sha256(image_path.read_bytes()).hexdigest()
+    (tmp_path / "image_generation_hashes.json").write_text(
+        json.dumps({
+            "version": 1,
+            "images": {
+                image_path.resolve().as_posix(): {
+                    "sha256": image_hash,
+                    "record_id": vehicle_id,
+                }
+            },
+        }),
+        encoding="utf-8",
+    )
 
     result = main([
         "--continue",
@@ -289,7 +405,7 @@ def test_no_measure_continue_uses_size_level_final_svg(tmp_path, capsys):
     assert final_svg.read_text(encoding="utf-8") == "keep final SVG"
 
 
-def test_terminal_summary_names_failed_vehicle_and_stage(tmp_path, capsys):
+def test_terminal_summary_reports_unmatched_image_as_skipped(tmp_path, capsys):
     table = tmp_path / "vehicles.tsv"
     table.write_text(
         "name\tSize\timage_path\tlength_mm\twidth_mm\theight_mm\n"
@@ -308,12 +424,11 @@ def test_terminal_summary_names_failed_vehicle_and_stage(tmp_path, capsys):
     ])
     captured = capsys.readouterr()
 
-    assert result == 1
+    assert result == 0
     assert captured.err == ""
     assert f"[1/1] {vehicle_id}" in captured.out
-    assert "❌ LOAD_IMAGE [Image not found:" in captured.out
-    assert "Run complete: 0 exported, 0 skipped, 0/1 complete, 1 failed" in captured.out
-    assert f"❌ {vehicle_id} — LOAD_IMAGE" in captured.out
+    assert "SKIPPED [unmatched image_path]" in captured.out
+    assert "Run complete: 0 exported, 1 skipped, 1/1 complete, 0 failed" in captured.out
 
 
 def test_main_uses_configured_output_and_cli_override(tmp_path, monkeypatch):
@@ -326,6 +441,7 @@ def test_main_uses_configured_output_and_cli_override(tmp_path, monkeypatch):
     config.write_text("output_dir: img/output\n", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
     record = VehicleRecord("TRUCK", "Truck", tmp_path / "truck.png", 6000, 2000, 2000)
+    Image.new("RGB", (320, 120), "gray").save(record.image_path)
     monkeypatch.setattr(pipeline, "load_records", lambda *args: [record])
     processed = []
 

@@ -20,6 +20,21 @@ def test_csv_input_is_parsed_with_comma_separator(tmp_path):
     assert records[0].image_path == image_path.resolve()
 
 
+def test_csv_directory_is_merged_in_filename_order(tmp_path):
+    image_path = tmp_path / "truck.png"
+    Image.new("RGB", (10, 10)).save(image_path)
+    for filename, name in [("vehicles_A.csv", "First Truck"), ("vehicles_B.csv", "Second Truck")]:
+        (tmp_path / filename).write_text(
+            "name,Size,image_path,length_mm,width_mm,height_mm\n"
+            f"{name},TEST,truck.png,6000,2000,2000\n",
+            encoding="utf-8",
+        )
+
+    records = load_records(tmp_path)
+
+    assert [record.name for record in records] == ["First Truck", "Second Truck"]
+
+
 def test_id_is_generated_from_all_fields_except_image_path(tmp_path):
     images = tmp_path / "images"
     images.mkdir()

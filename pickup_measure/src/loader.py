@@ -62,7 +62,9 @@ def _find_image_by_id(vehicle_id: str, images_dir: Path) -> Path:
     return matches[0].resolve()
 
 
-def load_records(tsv_path: Path, images_dir: Path | None = None) -> list[VehicleRecord]:
+def _load_records_file(
+    tsv_path: Path, images_dir: Path | None = None
+) -> list[VehicleRecord]:
     tsv_path = tsv_path.resolve()
     separator = "," if tsv_path.suffix.lower() == ".csv" else "\t"
     frame = pd.read_csv(
@@ -134,6 +136,33 @@ def load_records(tsv_path: Path, images_dir: Path | None = None) -> list[Vehicle
             )
         except Exception as exc:
             raise ValueError(f"Invalid CSV/TSV row {row_number + 2}: {exc}") from exc
+    return records
+
+
+def load_records(input_path: Path, images_dir: Path | None = None) -> list[VehicleRecord]:
+    """Load one CSV/TSV file, or merge every CSV in an input directory.
+
+    Directory inputs are deliberately limited to top-level CSV files so that
+    generated artifacts and nested image directories never become sources.
+    """
+    input_path = input_path.resolve()
+    if input_path.is_file():
+        return _load_records_file(input_path, images_dir)
+    if not input_path.is_dir():
+        raise FileNotFoundError(f"Input CSV/TSV path not found: {input_path}")
+
+    csv_paths = sorted(path for path in input_path.glob("*.csv") if path.is_file())
+    if not csv_paths:
+        raise ValueError(f"Input directory contains no CSV files: {input_path}")
+    records = [
+        record
+        for csv_path in csv_paths
+        for record in _load_records_file(csv_path, images_dir)
+    ]
+    ids = [record.id for record in records]
+    duplicates = sorted({vehicle_id for vehicle_id in ids if ids.count(vehicle_id) > 1})
+    if duplicates:
+        raise ValueError(f"Duplicate vehicle IDs across CSV files: {duplicates}")
     return records
 
 

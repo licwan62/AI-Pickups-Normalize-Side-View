@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import logging
 import math
+import subprocess
 import sys
 import time
 from dataclasses import asdict
@@ -50,6 +52,102 @@ AGGREGATE_MEASUREMENT_FIELDS = [
     "NECK-H",
     "BED-H",
 ]
+
+HASH_MANIFEST_NAME = "image_generation_hashes.json"
+CACHEABLE_FAILURE_PREFIXES = (
+    "Qwen response validation failed after repair:",
+    "Qwen response validation failed",
+)
+
+
+def image_sha256(image_path: Path) -> str:
+    """Return the content hash used to decide whether an image is unchanged."""
+    digest = hashlib.sha256()
+    with image_path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def load_hash_manifest(path: Path) -> dict[str, object]:
+    if not path.is_file():
+        return {"version": 1, "images": {}}
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid image hash manifest: {path}") from exc
+    if not isinstance(manifest, dict) or not isinstance(manifest.get("images"), dict):
+        raise ValueError(f"Invalid image hash manifest structure: {path}")
+    return manifest
+
+
+def save_hash_manifest(path: Path, manifest: dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def manifest_image_key(record: VehicleRecord) -> str:
+    return record.image_path.resolve().as_posix()
+
+
+def manifest_hash_matches(
+    manifest: dict[str, object], record: VehicleRecord, digest: str
+) -> bool:
+    entry = manifest_image_entry(manifest, record)
+    return (
+        isinstance(entry, dict)
+        and entry.get("sha256") == digest
+        and entry.get("record_id") == record.id
+    )
+
+
+def manifest_image_entry(
+    manifest: dict[str, object], record: VehicleRecord
+) -> dict[str, object] | None:
+    images = manifest["images"]
+    assert isinstance(images, dict)
+    entry = images.get(manifest_image_key(record))
+    return entry if isinstance(entry, dict) else None
+
+
+def record_generated_hash(
+    manifest: dict[str, object], record: VehicleRecord, digest: str
+) -> None:
+    images = manifest["images"]
+    assert isinstance(images, dict)
+    images[manifest_image_key(record)] = {
+        "sha256": digest,
+        "record_id": record.id,
+        "status": "EXPORTED",
+        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+
+
+def is_cacheable_failure(error: str) -> bool:
+    """Cache deterministic Qwen validation failures, not transient API errors."""
+    return error.startswith(CACHEABLE_FAILURE_PREFIXES)
+
+
+def record_failed_hash(
+    manifest: dict[str, object],
+    record: VehicleRecord,
+    digest: str,
+    error: str,
+    stage: str,
+) -> None:
+    images = manifest["images"]
+    assert isinstance(images, dict)
+    images[manifest_image_key(record)] = {
+        "sha256": digest,
+        "record_id": record.id,
+        "status": "FAILED",
+        "error": error,
+        "stage": stage,
+        "failed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
 
 
 def terminal_print(message: str) -> None:
@@ -744,7 +842,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--input",
         type=Path,
         default=None,
-        help="Input CSV/TSV path (defaults to input_csv/input_tsv in config.yaml)",
+        help="Input CSV/TSV file or directory of CSV files (defaults to input_csv/input_tsv in config.yaml)",
     )
     parser.add_argument(
         "--images", type=Path, default=Path("input/images"),
@@ -771,7 +869,22 @@ def build_parser() -> argparse.ArgumentParser:
         "--continue",
         dest="continue_mode",
         action="store_true",
-        help="Skip IDs whose final SVG and annotation data already exist",
+        help=(
+            "Skip unchanged image hashes with final output or a cached Qwen "
+            "validation failure"
+        ),
+    )
+    parser.add_argument(
+        "--only-name",
+        action="append",
+        default=[],
+        metavar="NAME",
+        help="Process only the exact vehicle name; repeat to process multiple records",
+    )
+    parser.add_argument(
+        "--sync-vehicles",
+        action="store_true",
+        help="Match images and update the input CSV file(s) before processing",
     )
     parser.add_argument(
         "--approve-warning",
@@ -803,7 +916,29 @@ def main(argv: list[str] | None = None) -> int:
         args.output = args.output or settings.output_dir
         configure_logging(args.output / "pickup_measure.log", args.verbose)
         input_path = args.input or settings.input_path
+        if args.sync_vehicles:
+            sync_script = Path(__file__).resolve().parents[1] / "scripts" / "sync_vehicle_names.py"
+            sync_paths = (
+                sorted(input_path.glob("*.csv"))
+                if input_path.is_dir()
+                else [input_path]
+            )
+            for sync_path in sync_paths:
+                subprocess.run(
+                    [sys.executable, str(sync_script), "--csv", str(sync_path), "--apply"],
+                    check=True,
+                )
         records = load_records(input_path, args.images)
+        if args.only_name:
+            requested_names = set(args.only_name)
+            records = [record for record in records if record.name in requested_names]
+            missing_names = requested_names - {record.name for record in records}
+            if missing_names:
+                raise ValueError(f"Vehicle name not found: {', '.join(sorted(missing_names))}")
+        manifest_path = (
+            input_path if input_path.is_dir() else input_path.parent
+        ) / HASH_MANIFEST_NAME
+        hash_manifest = load_hash_manifest(manifest_path)
     except Exception as exc:
         input_path = args.input or getattr(locals().get("settings"), "input_path", None)
         LOGGER.exception("Could not load input CSV/TSV: %s", input_path)
@@ -819,13 +954,55 @@ def main(argv: list[str] | None = None) -> int:
         annotation_points = (
             args.output / record.size / record.id / "annotation_points.json"
         )
-        already_generated = (
+        output_exists = (
             final_svg.is_file() and annotation_points.is_file()
             if args.measure
             else final_svg.is_file()
         )
+        if not record.image_path.is_file():
+            message = f"image_path does not exist: {record.image_path}"
+            LOGGER.warning("%s: %s; skipped", record.id, message)
+            summary.append({
+                "id": record.id,
+                "size": record.size,
+                "status": "SKIPPED",
+                "error": message,
+                "stage": "UNMATCHED_IMAGE",
+            })
+            terminal_print("  SKIPPED [unmatched image_path]")
+            continue
+        current_hash = image_sha256(record.image_path)
+        cached_entry = manifest_image_entry(hash_manifest, record)
+        hash_matches = manifest_hash_matches(hash_manifest, record, current_hash)
+        cached_failure = (
+            hash_matches
+            and cached_entry is not None
+            and cached_entry.get("status") == "FAILED"
+        )
+        already_generated = (
+            output_exists
+            and hash_matches
+            and (cached_entry is None or cached_entry.get("status") != "FAILED")
+        )
+        if args.continue_mode and cached_failure:
+            cached_error = str(cached_entry.get("error", "cached validation failure"))
+            cached_stage = str(cached_entry.get("stage", "DETECT"))
+            LOGGER.warning(
+                "%s: unchanged image hash has cached failure; skipped by --continue: %s",
+                record.id,
+                cached_error,
+            )
+            summary.append({
+                "id": record.id,
+                "size": record.size,
+                "status": "CACHED_FAILURE",
+                "error": cached_error,
+                "stage": cached_stage,
+            })
+            terminal_print(f"  SKIPPED [cached failure: {cached_error}]")
+            continue
         if args.continue_mode and already_generated:
-            LOGGER.info("%s: already generated; skipped by --continue", record.id)
+            LOGGER.info("%s: unchanged image hash; skipped by --continue", record.id)
             summary.append({
                 "id": record.id,
                 "size": record.size,
@@ -833,7 +1010,7 @@ def main(argv: list[str] | None = None) -> int:
                 "error": "",
                 "stage": "SKIPPED",
             })
-            terminal_print("  ⏭️ SKIPPED [already generated]")
+            terminal_print("  ⏭️ SKIPPED [unchanged image hash]")
             continue
         try:
             status = process_vehicle(
@@ -857,6 +1034,9 @@ def main(argv: list[str] | None = None) -> int:
                 "error": status_error,
                 "stage": progress_state["stage"],
             })
+            if status == "EXPORTED":
+                record_generated_hash(hash_manifest, record, current_hash)
+                save_hash_manifest(manifest_path, hash_manifest)
             if status != "EXPORTED":
                 terminal_print(
                     f"  ❌ {progress_state['stage']} "
@@ -865,13 +1045,23 @@ def main(argv: list[str] | None = None) -> int:
         except Exception as exc:
             LOGGER.error("%s: processing failed: %s", record.id, exc)
             LOGGER.debug("%s: processing traceback", record.id, exc_info=True)
+            error = str(exc)
             summary.append({
                 "id": record.id,
                 "size": record.size,
                 "status": "FAILED",
-                "error": str(exc),
+                "error": error,
                 "stage": progress_state["stage"],
             })
+            if is_cacheable_failure(error):
+                record_failed_hash(
+                    hash_manifest,
+                    record,
+                    current_hash,
+                    error,
+                    progress_state["stage"],
+                )
+                save_hash_manifest(manifest_path, hash_manifest)
             terminal_print(f"  ❌ {progress_state['stage']} [{exc}]")
 
     args.output.mkdir(parents=True, exist_ok=True)
@@ -892,8 +1082,10 @@ def main(argv: list[str] | None = None) -> int:
     else:
         aggregate_measurements.unlink(missing_ok=True)
     exported = sum(item["status"] == "EXPORTED" for item in summary)
-    skipped = sum(item["status"] == "SKIPPED" for item in summary)
-    completed = exported + skipped
+    skipped = sum(
+        item["status"] in {"SKIPPED", "CACHED_FAILURE"} for item in summary
+    )
+    completed = exported + sum(item["status"] == "SKIPPED" for item in summary)
     failed_items = [
         item
         for item in summary

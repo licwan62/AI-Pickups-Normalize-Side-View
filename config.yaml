@@ -1,4 +1,4 @@
-input_tsv: data/vehicles.csv
+input_tsv: data
 images_dir: img/input
 output_dir: img/output
 output:
