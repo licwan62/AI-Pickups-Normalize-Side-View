@@ -100,6 +100,22 @@ def test_all_empty_image_paths_produce_no_records(tmp_path):
     assert load_records(table) == []
 
 
+def test_rows_with_empty_dimensions_are_skipped(tmp_path):
+    image_path = tmp_path / "truck.png"
+    Image.new("RGB", (10, 10)).save(image_path)
+    table = tmp_path / "vehicles.csv"
+    table.write_text(
+        "name,Size,image_path,length_mm,width_mm,height_mm\n"
+        "Pending Truck,TEST,truck.png,,,\n"
+        "Ready Truck,TEST,truck.png,6000,2000,1900\n",
+        encoding="utf-8",
+    )
+
+    records = load_records(table)
+
+    assert [record.name for record in records] == ["Ready Truck"]
+
+
 def test_generated_id_normalizes_filename_unsafe_characters(tmp_path):
     image_path = tmp_path / "truck.png"
     Image.new("RGB", (10, 10)).save(image_path)

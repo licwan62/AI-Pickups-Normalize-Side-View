@@ -85,6 +85,15 @@ def _load_records_file(
         frame = frame.loc[has_image_path]
         if frame.empty:
             return []
+    # Generated project CSVs may contain image registrations whose dimensions
+    # are not yet available in the master table. Keep them in the CSV for later
+    # completion, but do not send them into the rendering pipeline.
+    has_dimensions = frame[["length_mm", "width_mm", "height_mm"]].apply(
+        lambda column: column.map(lambda value: bool(str(value).strip()))
+    ).all(axis=1)
+    frame = frame.loc[has_dimensions]
+    if frame.empty:
+        return []
     id_columns = [column for column in frame.columns if column != "image_path"]
     generated_ids = frame.apply(
         lambda row: _generate_vehicle_id(row, id_columns),

@@ -917,15 +917,22 @@ def main(argv: list[str] | None = None) -> int:
         configure_logging(args.output / "pickup_measure.log", args.verbose)
         input_path = args.input or settings.input_path
         if args.sync_vehicles:
-            sync_script = Path(__file__).resolve().parents[1] / "scripts" / "sync_vehicle_names.py"
-            sync_paths = (
-                sorted(input_path.glob("*.csv"))
-                if input_path.is_dir()
-                else [input_path]
-            )
-            for sync_path in sync_paths:
+            if input_path.is_dir():
+                sync_script = Path(__file__).resolve().parents[1] / "scripts" / "sync_project_csvs.py"
                 subprocess.run(
-                    [sys.executable, str(sync_script), "--csv", str(sync_path), "--apply"],
+                    [
+                        sys.executable,
+                        str(sync_script),
+                        "--projects",
+                        str(input_path),
+                        "--apply",
+                    ],
+                    check=True,
+                )
+            else:
+                sync_script = Path(__file__).resolve().parents[1] / "scripts" / "sync_vehicle_names.py"
+                subprocess.run(
+                    [sys.executable, str(sync_script), "--csv", str(input_path), "--apply"],
                     check=True,
                 )
         records = load_records(input_path, args.images)

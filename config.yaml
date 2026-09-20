@@ -1,4 +1,4 @@
-input_tsv: data
+input_tsv: data/projects
 images_dir: img/input
 output_dir: img/output
 output:

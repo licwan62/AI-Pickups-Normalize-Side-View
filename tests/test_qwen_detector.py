@@ -150,6 +150,18 @@ def test_qwen_body_chassis_line_is_a_long_near_horizontal_hint():
     assert line == [(180.0, 360.0), (820.0, 362.5)]
 
 
+def test_qwen_body_chassis_line_accepts_a_wheel_to_wheel_hint():
+    """A valid line inside the wheel centers can be narrower than 35% of frame."""
+    line = QwenVehicleDetector._body_chassis_line_from_payload(
+        {"body_chassis_line_1000": [[325, 682], [650, 684]]},
+        image_width=960,
+        image_height=540,
+        required=True,
+    )
+
+    assert line == [(312.0, 368.28), (624.0, 369.36)]
+
+
 def test_qwen_detector_rejects_legacy_prompt_template_copy():
     payload = {
         "bbox_1000": [40, 120, 960, 900],

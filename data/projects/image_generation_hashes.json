@@ -1,0 +1,497 @@
+{
+  "version": 1,
+  "images": {
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/2M/Chevrolet Bolt Hatchback 2017-2021.png": {
+      "sha256": "bec266096f501f233b39f37f2aad9eebe357a6d1a5f7274335a212817b6a894d",
+      "record_id": "Chevrolet_Bolt_Hatchback_2017-2021_2M_4166_1765_1595",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:42:02Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/2M/Kia Soul Wagon 2014-2019.png": {
+      "sha256": "67c571da749252c5a9b2d2a06448192045b65f399c3e568b4a0ed1a69710edf1",
+      "record_id": "Kia_Soul_Wagon_2014-2019_2M_4140_1801_1613",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:42:10Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/2M/Nissan Versa Note Hatchback 2014-2019.png": {
+      "sha256": "569a9da73961a6d3be4b9abe7d0d085267f156c5958b1be00d7eec0acb5995e7",
+      "record_id": "Nissan_Versa_Note_Hatchback_2014-2019_2M_4158_1694_1537",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:42:17Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/2M/Toyota Prius C Hatchback 2018-2019.png": {
+      "sha256": "cf7562dfaddd4fffe47745453b4a42b96c153319b659d8678ae6331fb351beb5",
+      "record_id": "Toyota_Prius_C_Hatchback_2018-2019_2M_4125_1742_1514",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:42:26Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/2XXL/Chrysler Pacifica MPV 2021-2026.png": {
+      "sha256": "1ffc62560ba5cf372812917eda27d0ec08ed1980b1a0b142e77542cf446de6b0",
+      "record_id": "Chrysler_Pacifica_MPV_2021-2026_2XXL_5189_2022_1775",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:42:34Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/2XXL/Lincoln MKT Crossover 2010-2019.png": {
+      "sha256": "cd4e92bc9c8dd35379dbf9f9d87fbe448a00e08f91905e111e38847d4707cec2",
+      "record_id": "Lincoln_MKT_Crossover_2010-2019_2XXL_5273_1930_1712",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:43:02Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/2XXL/Toyota Sienna Woodland MPV 2025-2026.png": {
+      "sha256": "4050c01753cb3c3a2ba2587b42d6da07b775bd159841e65f8fe7366ebc06f9ae",
+      "record_id": "Toyota_Sienna_Woodland_MPV_2025-2026_2XXL_5184_1994_1786",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:43:10Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3L-W/1970 Mercury Cougar.jpg": {
+      "sha256": "bb3e57761c698817fb743c112c78be30af92f06de604d5d818669a8350cc6cec",
+      "record_id": "1967-1970_Mercury_Cougar_3L-W_4826_1808_1316",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:43:26Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3L-W/1972 Chevrolet Nova SS.jpg": {
+      "sha256": "6873c582778cf16d835a946a2b7548d5a71bb9bd78eea58372cecdaab6fec2fc",
+      "record_id": "1968-1972_Chevrolet_Nova_3L-W_4811_1839_1334",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:43:41Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/custom/Dodge Challenger Coupe 2015-2023.avif": {
+      "sha256": "d495e374a227061f29de635c384587d0e3530fb60e2f19511e32f01b9ee3b361",
+      "record_id": "Dodge_Challenger_Coupe_2015-2023_custom_5027_1923_1466",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:44:45Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/custom/Ford Bronco 2dr 2021.jpg": {
+      "sha256": "56923ed6ce85689ddde47a50eed3f745f6a4cf97b91dc46332dd597887647d87",
+      "record_id": "Ford_Bronco_2dr_2021_custom_4412_1938_1882",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:44:52Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/custom/Ford Bronco 4dr 2021.jpg": {
+      "sha256": "1af95a18b5e51d1c554957fc9f2226fee1cf0d9ab1c09026344e37c638476c14",
+      "record_id": "Ford_Bronco_4dr_SUV_2021-2026_custom_4851_2177_1976",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:08:28Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/custom/Ford Bronco Sport 4dr 2021-2026.jpg": {
+      "sha256": "2742eb28fada55a0b93c9fe8c79f171970e7e608f25d7f2ea2d2f3965ac460b4",
+      "record_id": "Ford_Bronco_Sport_4dr_2021-2026_custom_4387_1887_1814",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:08:35Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/custom/JLU WRANGLER 4DR.webp": {
+      "sha256": "9984ecc6a62b20f13509eedd6199b0bedd82578c326a17c65aa80bffeceda25e",
+      "record_id": "Jeep_Wrangler_4dr_JLU_Xtreme_SUV_2024-2026_custom_4890_2014_1918",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:45:35Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/custom/Mazda CX-5 SUV 2026.avif": {
+      "sha256": "173783f6ab101af6b6303bdb8de16221bb9a6fed9d67c029100029e1d0ef04f0",
+      "record_id": "Mazda_CX-5_SUV_2026_custom_4689_1859_1694",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:45:43Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/custom/Tesla Model X SUV 2016-2026.jpg": {
+      "sha256": "1e16ae748abeec0df9a138d8b880599761cc151a811e1253a874a8a44c326cf1",
+      "record_id": "Tesla_Model_X_SUV_2016-2026_custom_5057_2004_1679",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:45:51Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/custom/1957 Chevrolet Bel Air.webp": {
+      "sha256": "a460ba722e1031cbb1726971a8a32f4177971e13d5ea8abcee784ac8f45a005a",
+      "record_id": "1957_Chevrolet_Bel_Air_custom_5080_1877_1521",
+      "status": "FAILED",
+      "error": "Qwen response validation failed after repair: Qwen did not return a valid JSON object",
+      "stage": "QWEN_LOCALIZE",
+      "failed_at": "2026-09-18T03:56:57Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/custom/JL WRANGLER 2DR.webp": {
+      "sha256": "72282149c56cb6f8b2223c43ce034407605d04e2ea0fc2363f512146b4ba681b",
+      "record_id": "Jeep_Wrangler_2dr_JL_Xtreme_SUV_2026_custom_4341_1877_1918",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:57:05Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/2XXL/Honda Odyssey MPV 2018-2026.png": {
+      "sha256": "31c4c7f7ed8d494d8d422e7e2d3fdac4a567c5f8599629fd1f5b88abb4b16ab2",
+      "record_id": "Honda_Odyssey_MPV_2018-2026_2XXL_5212_1994_1768",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:57:19Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3L-W/1991 Cadillac Seville STS.jpg": {
+      "sha256": "f9fbca3a2eb54fe6e39f010e97f04ac01fa9db82e48f9a2e1f194e0fe5b0eb3d",
+      "record_id": "1990_Cadillac_Seville_STS_3L-W_4846_1829_1364",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:57:26Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3L/2004 Pontiac Grand Am.jpg": {
+      "sha256": "6c945700ce3457346dc7fba9100073edaa1db382a06af88b3a646076939c70e1",
+      "record_id": "2004_Pontiac_Grand_Am_3L_4732_1788_1400",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:57:32Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3L/BMW 3 Series Sedan 2019-2026.png": {
+      "sha256": "961ddeba27503ce9bfa9c14361baafd4eb30612db7a4fc461053d06332d4e518",
+      "record_id": "BMW_3_Series_Sedan_2019-2026_3L_4722_1826_1448",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:57:40Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3L/Mercedes-Benz CLA-Class Sedan 2026-2027.png": {
+      "sha256": "f81b9f43fa33f8f165935d0b53d46ba02e6750b6e0c31f1e1b922b69918b7522",
+      "record_id": "Mercedes-Benz_CLA-Class_Sedan_2026-2027_3L_4722_1854_1468",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:57:48Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3L/Volvo S60 Sedan 2012-2018.png": {
+      "sha256": "7498cf31ae332ed7478d44cade389a0572256a61506b1e95c83b5fb17319c47e",
+      "record_id": "Volvo_S60_Sedan_2012-2018_3L_4636_1864_1483",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:57:57Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XL+/2009 Lincoln MKS-V6 Sedan.png": {
+      "sha256": "4a460fca531a8951038f0e4ee66a575ecc104cdb5ea1ac5216602a901ce7c344",
+      "record_id": "2009_Lincoln_MKS-V6_Sedan_3XL+_5184_1928_1565",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:58:32Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XL+/2018 Cadillac CT6 PHEV.png": {
+      "sha256": "c0d87aee6f773348e1b292eb04742527a8f731ffa2a13555b4069eb4f1975060",
+      "record_id": "2018_Cadillac_CT6_PHEV_3XL+_5184_1880_1473",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:58:40Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XL+/2026 Lexus ES.png": {
+      "sha256": "c9f867aba1c2016c50416f71484b3b9b2f2e8461acc29bdbdfecdcb33317674c",
+      "record_id": "2026_Lexus_ES_3XL+_5141_1920_1560",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:58:47Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XL-W/1988 Pontiac Bonneville.jpg": {
+      "sha256": "ef7c99ab2f93349b5da07905df5c767501e235edc141f4c9b343e417d171db91",
+      "record_id": "1987-1991_Pontiac_Bonneville_3XL-W_5047_1839_1410",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:58:55Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XL-W/1991 Lexus LS.jpg": {
+      "sha256": "0afcafc352662c222d75f733cde6d527813fb88b28799a9e1cdb80cfce68a6d9",
+      "record_id": "1991_Lexus_LS_3XL-W_5047_1821_1405",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:59:04Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XL-W/1992 Buick Riviera.jpg": {
+      "sha256": "5981fed80d48cfac2db410605c4a8b0d45510f40044ce702be9fd21457c70c56",
+      "record_id": "1992-1993_Buick_Riviera_3XL-W_5037_1857_1344",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:59:12Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XL-W/BMW 7 Sedan 1986-1994.png": {
+      "sha256": "8a86880f5c78e06d71b5b5b5f628bd28de8baa122bc9866b700a1a26a652ab21",
+      "record_id": "1987-1994_BMW_7_Series_3XL-W_5024_1844_1412",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:59:20Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XL/2023 Toyota Avalon.webp": {
+      "sha256": "cf3954ff8367738821692d7e0f7c7df9d13ab0f09d8d0a2ca64c7184f20578ba",
+      "record_id": "2023_Toyota_Avalon_3XL_4990_1850_1450",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:59:28Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XL/BMW 5 Series Sedan 2017-2023.png": {
+      "sha256": "9f05ee8783a7a5492e82b0f5e8fc67eb771a236d052f6ca99825499c431f5b43",
+      "record_id": "BMW_5_Series_Sedan_2017-2023_3XL_4966_1902_1478",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:59:35Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XL/Dodge Charger Sedan 2015-2023.png": {
+      "sha256": "bd04b0c48ff4cf477376400aaf0b3cb4a4ad231a2300824899a8a6b4e076d0cc",
+      "record_id": "Dodge_Charger_Sedan_2015-2023_3XL_5039_1905_1478",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:59:42Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XL/Hyundai IONIQ 6 N Sedan 2026.png": {
+      "sha256": "cfdcc6b25727d05ab351b7c52631f0ad0ef329962cb58543fc7db08e6bbff2d1",
+      "record_id": "Hyundai_IONIQ_6_N_Sedan_2026_3XL_4935_1941_1496",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:59:51Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XL/Toyota Crown Sedan 2023-2026.png": {
+      "sha256": "e5115a7a0d95c1fad0360948f2d2d3d7e8a7cdfbb3932676cbac022945bd87df",
+      "record_id": "Toyota_Crown_Sedan_2023-2026_3XL_4981_1839_1539",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T03:59:58Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XXL-W/1969 Chevrolet Caprice Coupe Restomod.jpg": {
+      "sha256": "288f911dafed994b857896d17023faaa4afd5632f697a52fea90eab00bdc52fa",
+      "record_id": "1969-1970_Chevrolet_Caprice_3XXL-W_5486_2027_1384",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:00:06Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XXL-W/1973 Chevrolet Impala Custom Coupe.jpg": {
+      "sha256": "c8f5fff798ef5c2a025cf612226cdcbfa14bfe418605d47337e8b3b83e9e41ec",
+      "record_id": "1973_Chevrolet_Impala_3XXL-W_5479_2009_1372",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:00:22Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XXL-W/1976 Ford Thunderbird.jpg": {
+      "sha256": "73f390929989adaf5eed602d5d770e1d5aab5f28d989c2723c817bfe75ab0dc4",
+      "record_id": "1972-1976_Ford_Thunderbird_3XXL-W_5486_2014_1323",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:00:36Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XXL-W/1979 Mercury Cougar.jpg": {
+      "sha256": "9ce67e2a5b5165300fcfb0e14b2ad8afdaef1ec6c0cdf4d90a00df9ec5f6c048",
+      "record_id": "1977-1979_Mercury_Cougar_3XXL-W_5474_1996_1346",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:00:51Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XXL/2004 Mercury Marauder.jpg": {
+      "sha256": "87d2e07c2bf0267dd33f5f4fe4775e0e8c985c7129c1e8bf281dc27516bca419",
+      "record_id": "2004_Mercury_Marauder_3XXL_5385_1986_1481",
+      "status": "FAILED",
+      "error": "Qwen response validation failed after repair: Qwen did not return a valid JSON object",
+      "stage": "QWEN_LOCALIZE",
+      "failed_at": "2026-09-18T04:01:19Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XXL/2023 BMW 7 Series Sedan.png": {
+      "sha256": "6d03111fdf9c7522f670e2a1ac585c62cd3938c7a2af179fe5967a5f8955bd3a",
+      "record_id": "2023_BMW_7_Series_Sedan_3XXL_5390_1951_1544",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:01:26Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XXL/2023 BMW I7 Sedan 4D.png": {
+      "sha256": "fe1e8b8a0d93a14cef8a7dad2e8698a24fb0d801d8218100bd98c3503dffccbd",
+      "record_id": "BMW_i7_Sedan_2023-2026_3XXL_5390_1951_1544",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:01:33Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XXL/2026 Mercedes-Benz S-Class AMG.png": {
+      "sha256": "a65d5f68b43641026662024d5444e64f39cff53a9f5e1d9f3629f014b4bcb499",
+      "record_id": "2026_Mercedes-Benz_S-Class_AMG_3XXL_5337_1920_1514",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:01:40Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XXXL/197 Buick Lesabre Royalty.webp": {
+      "sha256": "6e1e6a39f8eea416b5636355206f1263c9543f0eded8d496a1981ced9bc85279",
+      "record_id": "197_Buick_Lesabre_Royalty_3XXXL_5695_2022_1382",
+      "status": "FAILED",
+      "error": "Qwen response validation failed after repair: Qwen did not return a valid JSON object",
+      "stage": "QWEN_LOCALIZE",
+      "failed_at": "2026-09-18T04:02:07Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XXXL/1970 Mercury Marquis Brougham 4-Door Hardtop.webp": {
+      "sha256": "88a2fb60800447cbdfd85ef95b6a5c438196b8970fbb22c2810b7467c3f55846",
+      "record_id": "1970_Mercury_Marquis_Brougham_4-Door_Hardtop_3XXXL_5697_2027_1369",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:02:22Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XXXL/2005 Lincoln Town Car Signature L 4dr Sedan.jpg": {
+      "sha256": "eee18ea966c04b3f64a79039cfce76ff8fe9ecf809f6898176eb58e4799144f3",
+      "record_id": "2005_Lincoln_Town_Car_Signature_L_4dr_Sedan_3XXXL_5624_1994_1501",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:02:51Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XXXXL/1976 Oldsmobile Delta 88 Crown Coupe.jpg": {
+      "sha256": "5fa45513c98767526a809a3692d86fd2eb4660ab411077ac35db757d715cba18",
+      "record_id": "1976_Oldsmobile_Delta_88_Crown_Coupe_3XXXXL_5758_2032_1356",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:03:05Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XXXXL/1977-mercury-marquis.jpg": {
+      "sha256": "cf473becbde776ed225825506832ff7c6d238e52eeea9ed56bf2ea99b2f0ea89",
+      "record_id": "1977-mercury-marquis_3XXXXL_5817_2022_1389",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:03:13Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XXXXL/Cadillac DeVille Sedan 1975.jpg": {
+      "sha256": "06258136d8d1957e5d92863644daf501d667d0b16128aae6d0df8b3140777588",
+      "record_id": "Cadillac_DeVille_Sedan_1975_3XXXXL_5860_2027_1379",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:03:29Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/3XXXXL/Lincoln Continental 1977-1979.jpg": {
+      "sha256": "c7fe706bce3f9caed47e821f12c3982379be1737aed181754d157319cb0c4e26",
+      "record_id": "Lincoln_Continental_1977-1979_3XXXXL_5921_2029_1410",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:03:42Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-L/Ford F-150 Pickup 2024-2026 SuperCab 6.5.png": {
+      "sha256": "4d62f35e5dbe26c0a43b63318e2dc52cd11ef43cc023212e28bc290d72578002",
+      "record_id": "Ford_F-150_Pickup_2024-2026_SuperCab_6.5_PK-L_5893_2029_1961",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:03:50Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-L/Ford F-150 Pickup 2024-2026 SuperCrew 5.5.png": {
+      "sha256": "7579a8fa76372fce87e748622b8c3b2ed10bef58b20fc094ecd72f42d0cf41b4",
+      "record_id": "Ford_F-150_Pickup_2024-2026_SuperCrew_5.5_PK-L_5893_2029_1961",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:03:58Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-L/Ford F-150 Raptor Pickup 2011-2014 SuperCrew 5.5.jpg": {
+      "sha256": "c54d635bb94fea7a38f330fa5f307c61f791c524447512147fe3110f30fdd949",
+      "record_id": "Ford_F-150_Raptor_Pickup_2011-2014_SuperCrew_5.5_PK-L_5895_2192_1994",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:04:06Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-L/GMC Sierra 1500 Pickup 2014-2018 Crew 5.8.png": {
+      "sha256": "2ddc08615ebaa901617286ea91fb3def872a627f43fd6dd988acb15c746480a1",
+      "record_id": "GMC_Sierra_1500_Pickup_2014-2018_Crew_5.8_PK-L_5842_2032_1885",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:04:13Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-L/Ram 2500-3500 Pickup 2019-2026 Regular 8.png": {
+      "sha256": "2363a66818cf1dd6b40f4e5c93cac8cfc68c72adf87e942cd23aa9678a1775c6",
+      "record_id": "Ram_2500-3500_Pickup_2019-2026_Regular_8_PK-L_5893_2017_2037",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:04:20Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-L/Toyota Tundra Pickup 2004-2006 Double 6.5.jpg": {
+      "sha256": "57f7fd169db2037fa78a050a0ef42c7550dfe413f9d9c8bc92db717cd6d20623",
+      "record_id": "Toyota_Tundra_Pickup_2004-2006_Double_6.5_PK-L_5845_2014_1905",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:04:28Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-M+/Cadillac Escalade EXT Pickup 2002-2006 Crew 5.3.jpg": {
+      "sha256": "5138b6a9d5ea1d83df984a8049250fe14ee2736d7ada828907435934f93e1f16",
+      "record_id": "Cadillac_Escalade_EXT_Pickup_2002-2006_Crew_5.3_PK-M+_5624_2019_1920",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:04:37Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-M+/Chevrolet Avalanche 1500 Pickup 2002-2006 Crew 5.3.jpg": {
+      "sha256": "0154ddcd0003dd9b352f35460aa223306855f7cb24b5c2cf92c5648441ca0a50",
+      "record_id": "Chevrolet_Avalanche_1500_Pickup_2002-2006_Crew_5.3_PK-M+_5631_2027_1862",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:04:43Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-M+/Chevrolet Colorado ZR2 Pickup 2023-2026 Crew 5.png": {
+      "sha256": "079c8e627aa709ce7d24c3dd09a8f3b48f9c8f5c0e15d9fce14dfc2c76e6231d",
+      "record_id": "Chevrolet_Colorado_ZR2_Pickup_2023-2026_Crew_5_PK-M+_5403_1984_2078",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:04:51Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-M+/Ford F-150 Raptor Pickup 2010-2014 SuperCab 5.5.png": {
+      "sha256": "41a3bd6d2564a5ea3b36f9270aa1b44ac3a690bb042cec9c04a3ba1e239eb28c",
+      "record_id": "Ford_F-150_Raptor_Pickup_2010-2014_SuperCab_5.5_PK-M+_5611_2192_1994",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:04:58Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-M+/Rivian R1T Pickup 2025-2026 Crew 4.5.png": {
+      "sha256": "b3fa2029d5b414fab5c7572beec7c64e87aabc2f9b84b57b24de6dd61505183a",
+      "record_id": "Rivian_R1T_Pickup_2025-2026_Crew_4.5_PK-M+_5514_2083_1986",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:05:26Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-M/2015 Toyota Tacoma Double Cab Short Bed.png": {
+      "sha256": "f653ae6fa93ba2ea369f18086ae6f68ace6fae5d4b1d2466b3260bfed43a873e",
+      "record_id": "2015_Toyota_Tacoma_Double_Cab_Short_Bed_PK-M_5286_1895_1786",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:05:55Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-M/Ram 1500 Pickup 2002-2008 Regular 6.4.jpg": {
+      "sha256": "973ac82a2be4387a83eddf5aefe3dbe3b88ca841225ab6545070bc991d29d368",
+      "record_id": "Ram_1500_Pickup_2002-2008_Regular_6.4_PK-M_5276_2029_1905",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:06:03Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-M/Toyota Tacoma Pickup 2005-2013 Access 6.png": {
+      "sha256": "2ec61db4cbb35715500efdadaec2793fa14667844bd993ddfe7176d7d4f38616",
+      "record_id": "Toyota_Tacoma_Pickup_2005-2013_Access_6_PK-M_5286_1895_1786",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:06:10Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-WX/Ford F-350 Super Duty DRW Pickup 2023-2026 Regular 8.png": {
+      "sha256": "d3b3d92417e2614cdce6c1b7511a7630c7156fa86afb3176b473345c158d1dbb",
+      "record_id": "Ford_F-350_Super_Duty_DRW_Pickup_2023-2026_Regular_8_PK-WX_5888_2438_2065",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:06:16Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-WX/Ram 1500 RHO Pickup 2025-2026 Crew 5.6.png": {
+      "sha256": "58cfb035e06a0c744c4c33ed2ee10301d2643d4737453ebdfd0a397aba023f86",
+      "record_id": "Ram_1500_RHO_Pickup_2025-2026_Crew_5.6_PK-WX_5936_2235_2080",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:06:23Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-WXXL/2026 GMC Sierra 3500HD DRW Crew Cab Long Bed.png": {
+      "sha256": "c5205b78bc43b4a33515215cca6da3cacebd1f189ccd5ed808800e0468171859",
+      "record_id": "2026_GMC_Sierra_3500HD_DRW_Crew_Cab_Long_Bed_PK-WXXL_6777_2454_2032",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:06:30Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-WXXL/Ford F-350 Super Duty DRW Pickup 2023-2026 Crew 8.png": {
+      "sha256": "2a7b7dea597c1ebed7a7559a83a8b190fcee0422a152f71e58cd8827bdd504b9",
+      "record_id": "Ford_F-350_Super_Duty_DRW_Pickup_2023-2026_Crew_8_PK-WXXL_6761_2438_2070",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:06:36Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-XL/2000 Ford F-250 Super Duty SuperCab Long Bed.jpg": {
+      "sha256": "110e437c2cb071f6b17fe89c93408c1ceb5c643a6c6e54e21d75ee606ec231ce",
+      "record_id": "2000_Ford_F-250_Super_Duty_SuperCab_Long_Bed_PK-XL_6177_2029_2042",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:06:44Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-XL/2020 Ford F-150 SuperCrew Standard Bed.png": {
+      "sha256": "3be8498721fe687fbbf3690609310b15a7cbce1949bdf538a8d3ae9a52110507",
+      "record_id": "2020_Ford_F-150_SuperCrew_Standard_Bed_PK-XL_6190_2029_1963",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:06:50Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-XL/2024 Chevrolet Silverado 2500HD Double Cab Short Bed.png": {
+      "sha256": "309fa4d1b03c90664a3ad49598db1e53fd8a6058f0126fda781620bdee8106a3",
+      "record_id": "2024_Chevrolet_Silverado_2500HD_Double_Cab_Short_Bed_PK-XL_6109_2080_2032",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:06:57Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-XL/Ford F-150 Raptor Pickup 2021-2026 SuperCrew 5.5.png": {
+      "sha256": "a1b62e1e38af033452a18b3a824578642995f975d2922ba82a42a026dc883455",
+      "record_id": "Ford_F-150_Raptor_Pickup_2021-2026_SuperCrew_5.5_PK-XL_5908_2200_2027",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:07:04Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-XL/GMC Sierra 2500HD-3500HD Pickup 2020-2026 Regular 8.png": {
+      "sha256": "2e14685befe57ae3cdb4d743ff9a46311d8a4fe6c619f5e220f13e64fd35d82b",
+      "record_id": "GMC_Sierra_2500HD-3500HD_Pickup_2020-2026_Regular_8_PK-XL_6002_2080_2055",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:07:14Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-XXL/2020 Ford F-150 SuperCab Long Bed.jpg": {
+      "sha256": "13b43b51f58b743bf2c4cd59e25c835bda1022d9705642107d4f273d806e059e",
+      "record_id": "2020_Ford_F-150_SuperCab_Long_Bed_PK-XXL_6363_2029_1961",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:07:21Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-XXL/2024 Chevrolet Silverado 2500HD Crew Cab Standard Bed.jpg": {
+      "sha256": "3b8e17b7494e517db08913125d65bd438648f36c7c87f594c92148cd244f58ab",
+      "record_id": "2024_Chevrolet_Silverado_2500HD_Crew_Cab_Standard_Bed_PK-XXL_6350_2080_2055",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:07:28Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-XXL/2026 GMC Sierra 2500HD Crew Cab Standard Bed.png": {
+      "sha256": "be5996027126a452f4b9357f16155d316b3e0a989c053954e7aef54708b0b027",
+      "record_id": "2026_GMC_Sierra_2500HD_Crew_Cab_Standard_Bed_PK-XXL_6350_2080_2062",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:07:35Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-XXL/2026 Toyota Tundra Double Cab Long Bed.jpg": {
+      "sha256": "55f5e583e981c6ecaf6ed4102b913240408bb555d99f7c5b81fc569ca9569982",
+      "record_id": "2026_Toyota_Tundra_Double_Cab_Long_Bed_PK-XXL_6414_2037_1981",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:07:49Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-XXXL/2026 Ford F-250 Super Duty Crew Cab Long Bed.png": {
+      "sha256": "cc5d957067342caa9b75d4718ab918b46d152e2e90ad42d573b395560388f788",
+      "record_id": "2026_Ford_F-250_Super_Duty_Crew_Cab_Long_Bed_PK-XXXL_6761_2032_2068",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:07:57Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-XXXL/2026 GMC Sierra 2500HD Crew Cab Long Bed.png": {
+      "sha256": "66a50436dce3fe115148143aae0838343c116974afe6ff60c2f0b21e5a8b335f",
+      "record_id": "2026_GMC_Sierra_2500HD_Crew_Cab_Long_Bed_PK-XXXL_6756_2080_2062",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:08:04Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/PK-XXXL/2026 Ram 2500 Crew Cab Long Bed.png": {
+      "sha256": "fba77f50897c530e2d17e97a273e563a97d30bca210bca60d2bdf497494302d2",
+      "record_id": "2026_Ram_2500_Crew_Cab_Long_Bed_PK-XXXL_6624_2017_2035",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-18T04:08:11Z"
+    }
+  }
+}

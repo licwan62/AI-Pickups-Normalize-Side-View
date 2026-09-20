@@ -1,5 +1,39 @@
 # Vehicle image registration
 
+## Recommended automated workflow
+
+Manually maintain only the images below `img/input/<Size>/`. Generate all
+`data/projects/vehicles_<Size>.csv` files from the master dimension table with:
+
+```powershell
+python scripts/sync_project_csvs.py
+python scripts/sync_project_csvs.py --apply
+```
+
+The first command is a dry run. The second writes the project CSV files. New
+image filenames should equal `DIMENSION-ID` with the final
+market suffix (such as `US`) omitted. Word order, punctuation, and case do not
+matter. Existing project rows are retained as confirmed image aliases, which
+supports abbreviated filenames such as `JL WRANGLER 2DR.webp`.
+
+If an image year spans multiple dimension rows with different measurements, or
+the model/year is absent from the master table, the row is still written with
+`name`, `Size`, and `image_path`; its three dimension fields remain blank. The
+processing pipeline skips incomplete rows until authoritative dimensions are
+added to the master table and synchronization is run again.
+
+After adding, replacing, moving, or deleting an input image, run the sync again.
+The image's parent directory supplies `Size`; `L-MM`, `W-MM`, and `H-MM` always
+come from `data/dimensions/全尺码全量.csv`. Image files are never changed.
+
+Generation can perform the same synchronization first:
+
+```powershell
+python -m pickup_measure.main --sync-vehicles --continue
+```
+
+The older one-at-a-time registration workflow remains available below.
+
 Use `scripts/add_vehicle_image.py` for an existing image. Its filename (without
 the extension) is the canonical vehicle `name`; the image is never renamed or
 moved. The script derives `image_path`, checks the Size group and dimensions,

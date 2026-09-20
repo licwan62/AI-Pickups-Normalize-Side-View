@@ -776,7 +776,11 @@ class QwenVehicleDetector(VehicleDetector):
         ]
         points.sort(key=lambda point: point[0])
         horizontal_span = points[1][0] - points[0][0]
-        if horizontal_span < image_width * 0.35:
+        # The prompt deliberately keeps this structural hint between the wheel
+        # centers. On a tightly framed side view that interval can be only
+        # about one third of the source image, so a 35% image-wide minimum
+        # rejects otherwise valid rocker lines (notably short-wheelbase cars).
+        if horizontal_span < image_width * 0.30:
             raise RuntimeError(
                 "Qwen body_chassis_line_1000 is implausibly short"
             )

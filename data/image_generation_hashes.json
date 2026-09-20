@@ -865,6 +865,24 @@
       "record_id": "1968-1972_Chevrolet_Nova_3L-W_4811_1839_1334",
       "status": "EXPORTED",
       "generated_at": "2026-09-11T09:10:43Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/custom/1957 Chevrolet Bel Air.webp": {
+      "sha256": "a460ba722e1031cbb1726971a8a32f4177971e13d5ea8abcee784ac8f45a005a",
+      "record_id": "1957_Chevrolet_Bel_Air_custom_5080_1877_1521",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-14T06:40:35Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/custom/JLU WRANGLER 4DR.webp": {
+      "sha256": "9984ecc6a62b20f13509eedd6199b0bedd82578c326a17c65aa80bffeceda25e",
+      "record_id": "Jeep_Wrangler_4dr_JLU_Xtreme_SUV_2024-2026_custom_4890_2014_1918",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-17T06:53:12Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/custom/JL WRANGLER 2DR.webp": {
+      "sha256": "72282149c56cb6f8b2223c43ce034407605d04e2ea0fc2363f512146b4ba681b",
+      "record_id": "Jeep_Wrangler_2dr_JL_Xtreme_SUV_2026_custom_4341_1877_1918",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-17T06:53:20Z"
     }
   }
 }
