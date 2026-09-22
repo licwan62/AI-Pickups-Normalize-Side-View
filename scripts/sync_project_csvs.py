@@ -17,6 +17,13 @@ from pathlib import Path
 
 SUPPORTED_EXTENSIONS = {".avif", ".jpg", ".jpeg", ".png", ".webp"}
 OUTPUT_COLUMNS = ("name", "Size", "length_mm", "width_mm", "height_mm", "image_path")
+PROJECT_SIZE_GROUPS = {
+    "2M&2XXL-530": {"2M", "2XXL-530"},
+    "3L&3XXL-550": {"3L", "3XL", "3XXL-520", "3XXL-550"},
+    "4S&4XXL": {"4S", "4M", "4L", "4XL", "4XXL"},
+    "YM&YXXL-585": {"YM", "YL", "YXL", "YXXL-525", "YXXL-545", "YXXL-585"},
+    "PK-S&PK-XXL-680": {"PK-S", "PK-M", "PK-L", "PK-XL", "PK-XXL-645", "PK-XXL-680"},
+}
 MARKET_SUFFIX = re.compile(r"\s+(?:US|EU|CN|JP|KR|RU)$", re.IGNORECASE)
 NON_ALNUM = re.compile(r"[^a-z0-9]+")
 YEAR = re.compile(r"(?<!\d)(19\d{2}|20\d{2})(?:\s*-\s*(19\d{2}|20\d{2}))?(?!\d)")
@@ -98,7 +105,7 @@ def read_dimensions(path: Path) -> tuple[list[Dimension], dict[str, list[Dimensi
 
 def existing_aliases(project_dir: Path) -> dict[str, Dimension]:
     aliases: dict[str, Dimension] = {}
-    for path in sorted(project_dir.glob("vehicles_*.csv")):
+    for path in sorted(project_dir.glob("*.csv")):
         with path.open("r", encoding="utf-8-sig", newline="") as handle:
             for row in csv.DictReader(handle):
                 image_path = (row.get("image_path") or "").replace("\\", "/").lower()
@@ -111,6 +118,14 @@ def existing_aliases(project_dir: Path) -> dict[str, Dimension]:
                     (row.get("height_mm") or "").strip(),
                 )
     return aliases
+
+
+def project_filename(size: str) -> str:
+    """Return the aggregate project CSV filename for an input image size."""
+    for filename, sizes in PROJECT_SIZE_GROUPS.items():
+        if size in sizes:
+            return f"{filename}.csv"
+    return f"{size}.csv"
 
 
 def image_key(path: Path, root: Path) -> str:
@@ -184,11 +199,12 @@ def main() -> int:
     )
     for image in images:
         size = image.parent.name
+        project_file = project_filename(size)
         try:
             dimension = match_image(image, root, aliases, dimensions, by_name)
         except ValueError as exc:
             warnings.append(f"{image.relative_to(root)}: {exc}")
-            generated.setdefault(size, []).append({
+            generated.setdefault(project_file, []).append({
                 "name": image.stem,
                 "Size": size,
                 "length_mm": "",
@@ -197,7 +213,7 @@ def main() -> int:
                 "image_path": image.relative_to(root).as_posix(),
             })
             continue
-        generated.setdefault(size, []).append({
+        generated.setdefault(project_file, []).append({
             "name": dimension.name,
             "Size": size,
             "length_mm": dimension.length_mm,
@@ -211,14 +227,14 @@ def main() -> int:
         print(f"incomplete: {warning}")
 
     changes: list[tuple[Path, str]] = []
-    for size, rows in generated.items():
-        target = projects_dir / f"vehicles_{size}.csv"
+    for filename, rows in generated.items():
+        target = projects_dir / filename
         content = render_csv(rows)
         old = target.read_text(encoding="utf-8-sig") if target.is_file() else None
         if old != content:
             changes.append((target, content))
-    stale = sorted(set(projects_dir.glob("vehicles_*.csv")) - {path for path, _ in changes} - {
-        projects_dir / f"vehicles_{size}.csv" for size in generated
+    stale = sorted(set(projects_dir.glob("*.csv")) - {path for path, _ in changes} - {
+        projects_dir / filename for filename in generated
     }) if projects_dir.is_dir() else []
     print(f"project CSV changes: {len(changes)}; stale project CSV files: {len(stale)}")
     if not args.apply:

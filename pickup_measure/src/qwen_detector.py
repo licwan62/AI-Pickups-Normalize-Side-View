@@ -1174,24 +1174,23 @@ class QwenVehicleDetector(VehicleDetector):
             ],
         }]
         if previous_content is not None and validation_error is not None:
-            messages.extend([
-                {"role": "assistant", "content": previous_content},
-                {
-                    "role": "user",
-                    "content": (
-                        "Your previous JSON failed validation with this error: "
-                        f"{validation_error}\n"
-                        "Inspect the image again and return a corrected, complete JSON "
-                        "object. Include every required key and use arrays [x,y] for "
-                        "all points. Return JSON only."
-                    ),
-                },
-            ])
+            # Re-sending rejected output as an assistant turn can make Qwen
+            # explain its correction instead of returning a replacement JSON.
+            messages.append({
+                "role": "user",
+                "content": (
+                    "A previous result failed validation: "
+                    f"{validation_error}\n"
+                    "Re-inspect the supplied image. Return one complete corrected "
+                    "JSON object now, with every required key and [x,y] arrays. "
+                    "Do not explain the correction. Do not use Markdown."
+                ),
+            })
         request_payload = {
             "model": self.model,
             "messages": messages,
             "temperature": 0,
-            "max_tokens": 800,
+            "max_tokens": 1200 if previous_content is not None else 800,
         }
         request = Request(
             self.endpoint,
@@ -1247,7 +1246,8 @@ class QwenVehicleDetector(VehicleDetector):
         previous_content = None
         validation_error = None
 
-        for attempt in range(2):
+        # Permit one further repair when a correction is malformed or truncated.
+        for attempt in range(3):
             content = self._request_content(
                 image,
                 prompt,
@@ -1348,7 +1348,10 @@ class QwenVehicleDetector(VehicleDetector):
                     source_wheel_span = (
                         ordered_wheels[1][0] - ordered_wheels[0][0]
                     )
-                    endpoint_tolerance = source_wheel_span * 0.04
+                    # The visible rocker can continue a little into both wheel
+                    # arches. Accept that small overrun, then constrain the
+                    # search hint to the requested wheel-to-wheel interval.
+                    endpoint_tolerance = source_wheel_span * 0.15
                     if (
                         body_chassis_line[0][0]
                         < ordered_wheels[0][0] - endpoint_tolerance
@@ -1359,13 +1362,23 @@ class QwenVehicleDetector(VehicleDetector):
                             "Qwen body_chassis_line_1000 must stay between "
                             "the two wheel centers"
                         )
+                    body_chassis_line = [
+                        (
+                            max(body_chassis_line[0][0], ordered_wheels[0][0]),
+                            body_chassis_line[0][1],
+                        ),
+                        (
+                            min(body_chassis_line[1][0], ordered_wheels[1][0]),
+                            body_chassis_line[1][1],
+                        ),
+                    ]
                     wheel_center_y = float(np.mean(
                         [point[1] for point in ordered_wheels]
                     ))
                     chassis_y = float(np.mean(
                         [point[1] for point in body_chassis_line]
                     ))
-                    if chassis_y < wheel_center_y - bounds.pixel_height * 0.025:
+                    if chassis_y < wheel_center_y - bounds.pixel_height * 0.12:
                         raise RuntimeError(
                             "Qwen body_chassis_line_1000 is too high; use "
                             "the lower rocker, sill, or fixed side step"
@@ -1432,7 +1445,7 @@ class QwenVehicleDetector(VehicleDetector):
                                 "contact points"
                             )
             except RuntimeError as exc:
-                if attempt == 0:
+                if attempt < 2:
                     previous_content = content
                     validation_error = str(exc)
                     continue

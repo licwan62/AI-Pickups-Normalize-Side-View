@@ -33,7 +33,7 @@ def test_generates_project_csv_from_exact_dimension_name(tmp_path):
     result = run_sync(tmp_path, "--dimensions", "data/dimensions/all.csv", "--apply")
 
     assert result.returncode == 0
-    with (tmp_path / "data/projects/vehicles_custom.csv").open(newline="", encoding="utf-8") as handle:
+    with (tmp_path / "data/projects/custom.csv").open(newline="", encoding="utf-8") as handle:
         row = next(csv.DictReader(handle))
     assert row == {
         "name": "Tesla Model X SUV 2016-2026", "Size": "custom",
@@ -58,7 +58,7 @@ def test_existing_row_is_a_confirmed_alias(tmp_path):
     result = run_sync(tmp_path, "--dimensions", "data/dimensions/all.csv", "--apply")
 
     assert result.returncode == 0
-    assert "Jeep Wrangler 2dr JL Xtreme SUV 2026" in (projects / "vehicles_custom.csv").read_text()
+    assert "Jeep Wrangler 2dr JL Xtreme SUV 2026" in (projects / "custom.csv").read_text()
 
 
 def test_unmatched_image_writes_incomplete_row(tmp_path):
@@ -71,7 +71,7 @@ def test_unmatched_image_writes_incomplete_row(tmp_path):
 
     assert result.returncode == 0
     assert "incomplete" in result.stdout
-    with (tmp_path / "data/projects/vehicles_custom.csv").open(newline="", encoding="utf-8") as handle:
+    with (tmp_path / "data/projects/custom.csv").open(newline="", encoding="utf-8") as handle:
         row = next(csv.DictReader(handle))
     assert row == {
         "name": "unknown", "Size": "custom", "length_mm": "",
@@ -89,7 +89,7 @@ def test_matches_abbreviated_name_when_year_is_inside_master_range(tmp_path):
     result = run_sync(tmp_path, "--dimensions", "data/dimensions/all.csv", "--apply")
 
     assert result.returncode == 0
-    output = (tmp_path / "data/projects/vehicles_custom.csv").read_text()
+    output = (tmp_path / "data/projects/custom.csv").read_text()
     assert "Tesla Model X SUV 2016-2026" in output
 
 
@@ -102,5 +102,5 @@ def test_does_not_match_year_outside_master_range(tmp_path):
     result = run_sync(tmp_path, "--dimensions", "data/dimensions/all.csv", "--apply")
 
     assert result.returncode == 0
-    output = (tmp_path / "data/projects/vehicles_custom.csv").read_text()
+    output = (tmp_path / "data/projects/custom.csv").read_text()
     assert '"2015 Tesla Model X","custom","","","",' in output
