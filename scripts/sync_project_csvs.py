@@ -172,7 +172,7 @@ def render_csv(rows: list[dict[str, str]]) -> str:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--images", type=Path, default=Path("img/input"))
-    parser.add_argument("--dimensions", type=Path, default=Path("data/dimensions/全尺码全量.csv"))
+    parser.add_argument("--dimensions", type=Path, default=Path("data/dimensions/全量表_汇总.csv"))
     parser.add_argument("--projects", type=Path, default=Path("data/projects"))
     parser.add_argument("--apply", action="store_true", help="write generated project CSV files")
     return parser.parse_args()

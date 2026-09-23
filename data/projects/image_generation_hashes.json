@@ -708,6 +708,42 @@
       "record_id": "2014-2024_Smart_Fortwo.jpg_RU_2695_1664_1554",
       "status": "EXPORTED",
       "generated_at": "2026-09-21T11:55:07Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/custom/2007 Subaru Impreza Outback Sport.jpg": {
+      "sha256": "5d8eae807500b1923861fd79ce30384b63b49b5beb7f6e537cdabe8036ab4fc7",
+      "record_id": "2007_Subaru_Impreza_Outback_Sport_custom_4465_1709_1539",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-23T03:41:43Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/custom/2023 Subaru Crosstrek.jpg": {
+      "sha256": "af3f2b4c7736f8126714c0cd37ce712d1e67b2e2ae05515fec4d28840ceb8394",
+      "record_id": "Subaru_Crosstrek_Crossover_2018-2023_custom_4465_1803_1615",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-23T03:41:51Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/custom/2023 Subaru Outback.jpg": {
+      "sha256": "e77c87e1826de1c2e1be001d6307c2a193757290546e79d8ab44797991afdae1",
+      "record_id": "2023_Subaru_Outback_custom_4859_1895_1699",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-23T03:41:59Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/RU/1993-2020 Lada 4x4 urban.jpg": {
+      "sha256": "6644928940ff73215dba8c61c225457fec960bc45ac2227ad8d1cc5e19cac6e7",
+      "record_id": "Lada_(ВАЗ)_2121_(4x4)_Urban_SUV_1993-2020_RU_3640_1689_1641",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-23T03:42:08Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/RU/2016 Suzuki Grand Vitara.jpg": {
+      "sha256": "ecc9709a40018dc79f9463ff98b84a3aabf18d023d198e10440b363b4063070e",
+      "record_id": "Suzuki_Grand_Vitara_SUV_2012-2016_RU_4059_1811_1694",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-23T03:42:16Z"
+    },
+    "D:/Licheng/Repo/AI-Pickups-Normalize-Side-View/img/input/RU/2021-2026 LADA Niva Legend.webp": {
+      "sha256": "a31a76c9cb61e3db401331e7bb357d2adea06f5e78f91e4cf88d1d398443a640",
+      "record_id": "Lada_(ВАЗ)_Niva_Legend_SUV_2021-2026_RU_3739_1679_1641",
+      "status": "EXPORTED",
+      "generated_at": "2026-09-23T03:42:24Z"
     }
   }
 }
