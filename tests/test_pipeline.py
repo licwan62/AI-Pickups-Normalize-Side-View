@@ -267,7 +267,7 @@ def test_continue_skips_cached_qwen_validation_failure(tmp_path, monkeypatch, ca
     manifest = json.loads(
         (tmp_path / "image_generation_hashes.json").read_text(encoding="utf-8")
     )
-    entry = manifest["images"][image_path.resolve().as_posix()]
+    entry = manifest["images"]["truck.png"]
     assert entry["status"] == "FAILED"
     assert entry["error"] == error
     assert entry["stage"] == "DETECT"

@@ -6,6 +6,7 @@ import hashlib
 import json
 import logging
 import math
+import os
 import subprocess
 import sys
 import time
@@ -89,14 +90,22 @@ def save_hash_manifest(path: Path, manifest: dict[str, object]) -> None:
     )
 
 
-def manifest_image_key(record: VehicleRecord) -> str:
-    return record.image_path.resolve().as_posix()
+def manifest_image_key(record: VehicleRecord, manifest_dir: Path) -> str:
+    """Return a relocatable image key relative to the manifest directory."""
+    image_path = record.image_path.resolve()
+    manifest_dir = manifest_dir.resolve()
+    try:
+        return Path(os.path.relpath(image_path, manifest_dir)).as_posix()
+    except ValueError:
+        # Windows cannot create a relative path across drive letters.
+        return image_path.as_posix()
 
 
 def manifest_hash_matches(
-    manifest: dict[str, object], record: VehicleRecord, digest: str
+    manifest: dict[str, object], record: VehicleRecord, digest: str,
+    manifest_dir: Path,
 ) -> bool:
-    entry = manifest_image_entry(manifest, record)
+    entry = manifest_image_entry(manifest, record, manifest_dir)
     return (
         isinstance(entry, dict)
         and entry.get("sha256") == digest
@@ -105,20 +114,46 @@ def manifest_hash_matches(
 
 
 def manifest_image_entry(
-    manifest: dict[str, object], record: VehicleRecord
+    manifest: dict[str, object], record: VehicleRecord, manifest_dir: Path
 ) -> dict[str, object] | None:
     images = manifest["images"]
     assert isinstance(images, dict)
-    entry = images.get(manifest_image_key(record))
-    return entry if isinstance(entry, dict) else None
+    entry = images.get(manifest_image_key(record, manifest_dir))
+    if isinstance(entry, dict):
+        return entry
+
+    # Read version-1 manifests that used an absolute path as the key. Matching
+    # by record ID also keeps the cache useful after the repository is moved.
+    legacy_entry = images.get(record.image_path.resolve().as_posix())
+    if isinstance(legacy_entry, dict):
+        return legacy_entry
+    for candidate in images.values():
+        if isinstance(candidate, dict) and candidate.get("record_id") == record.id:
+            return candidate
+    return None
+
+
+def _remove_legacy_manifest_entries(
+    images: dict[str, object], record: VehicleRecord, relative_key: str
+) -> None:
+    for key, entry in list(images.items()):
+        if (
+            key != relative_key
+            and isinstance(entry, dict)
+            and entry.get("record_id") == record.id
+        ):
+            del images[key]
 
 
 def record_generated_hash(
-    manifest: dict[str, object], record: VehicleRecord, digest: str
+    manifest: dict[str, object], record: VehicleRecord, digest: str,
+    manifest_dir: Path,
 ) -> None:
     images = manifest["images"]
     assert isinstance(images, dict)
-    images[manifest_image_key(record)] = {
+    relative_key = manifest_image_key(record, manifest_dir)
+    _remove_legacy_manifest_entries(images, record, relative_key)
+    images[relative_key] = {
         "sha256": digest,
         "record_id": record.id,
         "status": "EXPORTED",
@@ -137,10 +172,13 @@ def record_failed_hash(
     digest: str,
     error: str,
     stage: str,
+    manifest_dir: Path,
 ) -> None:
     images = manifest["images"]
     assert isinstance(images, dict)
-    images[manifest_image_key(record)] = {
+    relative_key = manifest_image_key(record, manifest_dir)
+    _remove_legacy_manifest_entries(images, record, relative_key)
+    images[relative_key] = {
         "sha256": digest,
         "record_id": record.id,
         "status": "FAILED",
@@ -979,8 +1017,10 @@ def main(argv: list[str] | None = None) -> int:
             terminal_print("  SKIPPED [unmatched image_path]")
             continue
         current_hash = image_sha256(record.image_path)
-        cached_entry = manifest_image_entry(hash_manifest, record)
-        hash_matches = manifest_hash_matches(hash_manifest, record, current_hash)
+        cached_entry = manifest_image_entry(hash_manifest, record, manifest_path.parent)
+        hash_matches = manifest_hash_matches(
+            hash_manifest, record, current_hash, manifest_path.parent
+        )
         cached_failure = (
             hash_matches
             and cached_entry is not None
@@ -994,6 +1034,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.continue_mode and cached_failure:
             cached_error = str(cached_entry.get("error", "cached validation failure"))
             cached_stage = str(cached_entry.get("stage", "DETECT"))
+            images = hash_manifest["images"]
+            assert isinstance(images, dict)
+            relative_key = manifest_image_key(record, manifest_path.parent)
+            _remove_legacy_manifest_entries(images, record, relative_key)
+            images[relative_key] = cached_entry
+            save_hash_manifest(manifest_path, hash_manifest)
             LOGGER.warning(
                 "%s: unchanged image hash has cached failure; skipped by --continue: %s",
                 record.id,
@@ -1010,6 +1056,10 @@ def main(argv: list[str] | None = None) -> int:
             continue
         if args.continue_mode and already_generated:
             LOGGER.info("%s: unchanged image hash; skipped by --continue", record.id)
+            record_generated_hash(
+                hash_manifest, record, current_hash, manifest_path.parent
+            )
+            save_hash_manifest(manifest_path, hash_manifest)
             summary.append({
                 "id": record.id,
                 "size": record.size,
@@ -1042,7 +1092,9 @@ def main(argv: list[str] | None = None) -> int:
                 "stage": progress_state["stage"],
             })
             if status == "EXPORTED":
-                record_generated_hash(hash_manifest, record, current_hash)
+                record_generated_hash(
+                    hash_manifest, record, current_hash, manifest_path.parent
+                )
                 save_hash_manifest(manifest_path, hash_manifest)
             if status != "EXPORTED":
                 terminal_print(
@@ -1067,6 +1119,7 @@ def main(argv: list[str] | None = None) -> int:
                     current_hash,
                     error,
                     progress_state["stage"],
+                    manifest_path.parent,
                 )
                 save_hash_manifest(manifest_path, hash_manifest)
             terminal_print(f"  ❌ {progress_state['stage']} [{exc}]")
