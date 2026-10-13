@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import hashlib
 import json
 import logging
@@ -13,7 +12,7 @@ import time
 from dataclasses import asdict
 from pathlib import Path
 
-from .src.annotation import classify_background, measure_and_trace
+from .src.background import classify_background
 from .src.exporter import Exporter
 from .src.geometry import (
     Bounds,
@@ -24,35 +23,12 @@ from .src.geometry import (
 )
 from .src.loader import VehicleRecord, load_image, load_records
 from .src.orientation import normalize_front_to_right
-from .src.quality import QCStatus, evaluate_ratio
 from .src.qwen_detector import QwenVehicleDetector
-from .src.renderer import (
-    render_annotated_svg,
-    render_dimensioned_vehicle_svg,
-    render_vehicle_svg,
-)
-from .src.scaler import ScaleMapping
-from .src.settings import (
-    AnnotationStyle,
-    DetectionSettings,
-    QualitySettings,
-    load_settings,
-)
+from .src.renderer import render_dimensioned_vehicle_svg
+from .src.settings import AnnotationStyle, DetectionSettings, load_settings
 
 
 LOGGER = logging.getLogger("pickup_measure")
-
-AGGREGATE_MEASUREMENT_FIELDS = [
-    "NAME",
-    "SIZE",
-    "L-MM",
-    "W-MM",
-    "H-MM",
-    "CAB-H",
-    "HOOD-H",
-    "NECK-H",
-    "BED-H",
-]
 
 HASH_MANIFEST_NAME = "image_generation_hashes.json"
 CACHEABLE_FAILURE_PREFIXES = (
@@ -223,65 +199,14 @@ def configure_logging(log_path: Path, verbose: bool = False) -> None:
     )
 
 
-def write_aggregate_measurements(
-    output_root: Path,
-    records: list[VehicleRecord],
-    included_ids: set[str] | None = None,
-) -> Path:
-    """Write the public one-row-per-vehicle measurements table."""
-    aggregate_path = output_root / "measurements.tsv"
-    output_root.mkdir(parents=True, exist_ok=True)
-    with aggregate_path.open(
-        "w",
-        encoding="utf-8-sig",
-        newline="",
-    ) as stream:
-        writer = csv.DictWriter(
-            stream,
-            fieldnames=AGGREGATE_MEASUREMENT_FIELDS,
-            delimiter="\t",
-        )
-        writer.writeheader()
-        for record in records:
-            if included_ids is not None and record.id not in included_ids:
-                continue
-            annotation_path = (
-                output_root
-                / record.size
-                / record.id
-                / "annotation_points.json"
-            )
-            if not annotation_path.is_file():
-                continue
-            annotation = json.loads(
-                annotation_path.read_text(encoding="utf-8")
-            )
-            writer.writerow({
-                "NAME": record.name,
-                "SIZE": record.size,
-                "L-MM": round(record.length_mm),
-                "W-MM": round(record.width_mm),
-                "H-MM": round(record.height_mm),
-                "CAB-H": round(annotation["cab_height_mm"]),
-                "HOOD-H": round(annotation["hood_height_mm"]),
-                "NECK-H": round(annotation["neck_height_mm"]),
-                "BED-H": round(annotation["bed_height_mm"]),
-            })
-    return aggregate_path
-
-
 def process_vehicle(
     record: VehicleRecord,
     output_root: Path,
-    approve_warning: bool,
     manual: bool = False,
     reuse_points: bool = False,
-    ppi: float = 72.0,
     annotation_style: AnnotationStyle = AnnotationStyle(),
-    quality_settings: QualitySettings = QualitySettings(),
     detection_settings: DetectionSettings = DetectionSettings(),
     progress_state: dict[str, str] | None = None,
-    measure: bool = True,
 ) -> str:
     process_started_at = time.perf_counter()
 
@@ -292,12 +217,12 @@ def process_vehicle(
     size_output_dir = output_root / record.size
     output_dir = size_output_dir / record.id
     exporter = Exporter(output_dir)
-    # A blocked or failed rerun must not leave a stale SVG that looks current.
-    vehicle_svg = output_dir / "vehicle.svg"
+    # A failed rerun must not leave a stale SVG that looks current.
     final_svg = size_output_dir / f"{record.id}.svg"
-    vehicle_svg.unlink(missing_ok=True)
     final_svg.unlink(missing_ok=True)
+    # Also clears files from earlier runs, including the removed --measure mode.
     for stale_name in (
+        "vehicle.svg",
         "annotated.svg",
         "annotated.pdf",
         "preview.png",
@@ -750,125 +675,25 @@ def process_vehicle(
         f"front={orientation.normalized_front}, background={background_type}",
     )
 
-    if not measure:
-        set_stage("RENDER_EXPORT")
-        render_dimensioned_vehicle_svg(
-            image=crop,
-            output_path=final_svg,
-            width_mm=record.length_mm,
-            height_mm=record.height_mm,
-            style=annotation_style,
-            model_name=record.name,
-        )
-        LOGGER.info(
-            "%s: exported no-measure result %s at %.1f mm x %.1f mm",
-            record.id,
-            final_svg,
-            record.length_mm,
-            record.height_mm,
-        )
-        terminal_stage_done(
-            "RENDER_EXPORT",
-            f"status=EXPORTED, mode=no-measure, "
-            f"elapsed={time.perf_counter() - process_started_at:.1f}s",
-        )
-        return "EXPORTED"
-
-    set_stage("MEASURE_RENDER_EXPORT")
-    mapping = ScaleMapping.from_dimensions(
-        pixel_width=crop.width,
-        pixel_height=crop.height,
-        length_mm=record.length_mm,
-        height_mm=record.height_mm,
-    )
-    qc = evaluate_ratio(
-        name=record.name,
-        source_width=crop.width,
-        source_height=crop.height,
-        length_mm=record.length_mm,
-        height_mm=record.height_mm,
-        pass_max_percent=quality_settings.pass_max_percent,
-        warning_max_percent=quality_settings.warning_max_percent,
-        error_max_percent=quality_settings.error_max_percent,
-    )
-    qc_payload = {
-        **asdict(qc),
-        "distortion_percent": round(qc.distortion * 100, 4),
-        "pass_max_percent": quality_settings.pass_max_percent,
-        "warning_max_percent": quality_settings.warning_max_percent,
-        "error_max_percent": quality_settings.error_max_percent,
-        "warning_limit_exceeded": (
-            qc.distortion * 100 > quality_settings.warning_max_percent
-        ),
-        "scale_x_mm_per_px": mapping.scale_x,
-        "scale_y_mm_per_px": mapping.scale_y,
-        "warning_approved": bool(qc.status is QCStatus.WARNING and approve_warning),
-        "warning_auto_continued": qc.status is QCStatus.WARNING,
-    }
-    exporter.write_json("qc_report.json", qc_payload)
-
-    if qc.status is QCStatus.BLOCKED:
-        LOGGER.error("%s: blocked (ratio distortion %.2f%%)", record.id, qc.distortion * 100)
-        if progress_state is not None:
-            progress_state["error"] = (
-                f"ratio distortion {qc.distortion * 100:.2f}% exceeds limit"
-            )
-        return "BLOCKED"
-    if qc.status is QCStatus.WARNING:
-        LOGGER.warning(
-            "%s: warning (ratio distortion %.2f%%); continuing to dimension annotation.",
-            record.id,
-            qc.distortion * 100,
-        )
-
-    render_vehicle_svg(
+    set_stage("RENDER_EXPORT")
+    render_dimensioned_vehicle_svg(
         image=crop,
-        output_path=vehicle_svg,
-        width_mm=record.length_mm,
-        height_mm=record.height_mm,
-    )
-    # AI stops at localization, direction normalization, perspective correction,
-    # and cropping. All red vehicle structure is measured from the corrected
-    # pixels by the deterministic Python annotation pipeline.
-    annotation = measure_and_trace(
-        crop,
-        mapping,
-        record.height_mm,
-        background_type=background_type,
-        chassis_hint_line=crop_chassis_hint,
-    )
-    exporter.write_json("annotation_points.json", annotation.points_payload())
-    render_annotated_svg(
-        image=crop,
-        geometry=annotation,
         output_path=final_svg,
         width_mm=record.length_mm,
         height_mm=record.height_mm,
-        model_name=record.name,
         style=annotation_style,
+        model_name=record.name,
     )
-    exporter.write_measurements({
-        "id": record.id,
-        "name": record.name,
-        "length_mm": round(record.length_mm),
-        "height_mm": round(record.height_mm),
-        "width_mm": round(record.width_mm),
-        "bed_height_mm": round(annotation.bed_height_mm),
-        "cab_height_mm": round(annotation.cab_height_mm),
-        "neck_height_mm": round(annotation.neck_height_mm),
-        "hood_height_mm": round(annotation.hood_height_mm),
-        "qc_status": qc.status.value,
-    })
     LOGGER.info(
-        "%s: exported vehicle.svg and %s at %.1f mm x %.1f mm",
+        "%s: exported %s at %.1f mm x %.1f mm",
         record.id,
         final_svg,
         record.length_mm,
         record.height_mm,
     )
     terminal_stage_done(
-        "MEASURE_RENDER_EXPORT",
-        f"status=EXPORTED, qc={qc.status.value}, "
+        "RENDER_EXPORT",
+        f"status=EXPORTED, "
         f"elapsed={time.perf_counter() - process_started_at:.1f}s",
     )
     return "EXPORTED"
@@ -924,25 +749,17 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Match images and update the input CSV file(s) before processing",
     )
+    # Accepted so existing commands keep working; measurement was removed.
     parser.add_argument(
         "--approve-warning",
         action="store_true",
-        help="Deprecated compatibility flag; warnings now continue automatically",
+        help=argparse.SUPPRESS,
     )
-    measurement_mode = parser.add_mutually_exclusive_group()
-    measurement_mode.add_argument(
-        "--measure",
-        dest="measure",
-        action="store_true",
-        help="Run measurement, quality checks, and red-box annotation",
-    )
-    measurement_mode.add_argument(
+    parser.add_argument(
         "--no-measure",
-        dest="measure",
-        action="store_false",
-        help="Only crop/normalize and export the final <id>.svg (default)",
+        action="store_true",
+        help=argparse.SUPPRESS,
     )
-    parser.set_defaults(measure=False)
     parser.add_argument("--verbose", action="store_true")
     return parser
 
@@ -996,14 +813,7 @@ def main(argv: list[str] | None = None) -> int:
         progress_state = {"stage": "INITIALIZE"}
         terminal_print(f"[{index}/{total_records}] {record.id}")
         final_svg = args.output / record.size / f"{record.id}.svg"
-        annotation_points = (
-            args.output / record.size / record.id / "annotation_points.json"
-        )
-        output_exists = (
-            final_svg.is_file() and annotation_points.is_file()
-            if args.measure
-            else final_svg.is_file()
-        )
+        output_exists = final_svg.is_file()
         if not record.image_path.is_file():
             message = f"image_path does not exist: {record.image_path}"
             LOGGER.warning("%s: %s; skipped", record.id, message)
@@ -1073,15 +883,11 @@ def main(argv: list[str] | None = None) -> int:
             status = process_vehicle(
                 record,
                 output_root=args.output,
-                approve_warning=args.approve_warning,
                 manual=args.manual,
                 reuse_points=args.reuse_points,
-                ppi=settings.output.ppi,
                 annotation_style=settings.annotation,
-                quality_settings=settings.quality,
                 detection_settings=settings.detection,
                 progress_state=progress_state,
-                measure=args.measure,
             )
             status_error = progress_state.get("error", "")
             summary.append({
@@ -1128,19 +934,7 @@ def main(argv: list[str] | None = None) -> int:
     (args.output / "run_summary.json").write_text(
         json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    aggregate_measurements = args.output / "measurements.tsv"
-    if args.measure:
-        write_aggregate_measurements(
-            args.output,
-            records,
-            included_ids={
-                item["id"]
-                for item in summary
-                if item["status"] in {"EXPORTED", "SKIPPED"}
-            },
-        )
-    else:
-        aggregate_measurements.unlink(missing_ok=True)
+    (args.output / "measurements.tsv").unlink(missing_ok=True)
     exported = sum(item["status"] == "EXPORTED" for item in summary)
     skipped = sum(
         item["status"] in {"SKIPPED", "CACHED_FAILURE"} for item in summary

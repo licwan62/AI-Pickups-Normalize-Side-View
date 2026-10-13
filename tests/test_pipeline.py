@@ -17,41 +17,39 @@ def test_saved_points_produce_true_size_svg(tmp_path):
     item_dir = tmp_path / "output" / record.size / record.id
     Bounds(left=10, right=310, roof=10, ground=110).to_json(item_dir / "points.json")
 
-    status = process_vehicle(
-        record, tmp_path / "output", approve_warning=False, reuse_points=True, ppi=1
-    )
+    status = process_vehicle(record, tmp_path / "output", reuse_points=True)
 
     assert status == "EXPORTED"
-    svg = (item_dir / "vehicle.svg").read_text(encoding="utf-8")
-    assert 'width="6000mm"' in svg
-    assert 'height="2000mm"' in svg
+    svg = (item_dir.parent / f"{record.id}.svg").read_text(encoding="utf-8")
+    assert 'width="6000"' in svg
+    assert 'height="2000"' in svg
     assert (item_dir / "crop_source.png").exists()
     assert (item_dir / "orientation.json").exists()
     assert not (item_dir / "crop.png").exists()
-    qc = json.loads((item_dir / "qc_report.json").read_text(encoding="utf-8"))
-    assert qc["status"] == "PASS"
 
 
-def test_warning_continues_to_dimension_annotation(tmp_path):
+def test_rerun_removes_stale_measure_mode_files(tmp_path):
     image_path = tmp_path / "truck.png"
     Image.new("RGB", (330, 100), "gray").save(image_path)
-    record = VehicleRecord("TRUCK_02", "Warning Truck", image_path, 3000, 2000, 1000)
+    record = VehicleRecord("TRUCK_02", "Old Truck", image_path, 3000, 2000, 1000)
     item_dir = tmp_path / "output" / record.size / record.id
     Bounds(left=7, right=322, roof=0, ground=100).to_json(item_dir / "points.json")
-    (item_dir / "vehicle.svg").write_text("stale", encoding="utf-8")
+    for stale_name in (
+        "vehicle.svg",
+        "annotation_points.json",
+        "qc_report.json",
+        "measurements.tsv",
+    ):
+        (item_dir / stale_name).write_text("stale", encoding="utf-8")
 
-    status = process_vehicle(
-        record, tmp_path / "output", approve_warning=False, reuse_points=True, ppi=1
-    )
+    status = process_vehicle(record, tmp_path / "output", reuse_points=True)
 
     assert status == "EXPORTED"
-    assert (item_dir / "vehicle.svg").exists()
     assert (item_dir.parent / f"{record.id}.svg").exists()
-    assert not (item_dir / "annotated.svg").exists()
-    assert (item_dir / "annotation_points.json").exists()
-    qc = json.loads((item_dir / "qc_report.json").read_text(encoding="utf-8"))
-    assert qc["status"] == "WARNING"
-    assert qc["warning_auto_continued"] is True
+    assert not (item_dir / "vehicle.svg").exists()
+    assert not (item_dir / "annotation_points.json").exists()
+    assert not (item_dir / "qc_report.json").exists()
+    assert not (item_dir / "measurements.tsv").exists()
 
 
 def test_rejected_detection_preserves_attempt_crop_and_diagnostics(
@@ -76,7 +74,6 @@ def test_rejected_detection_preserves_attempt_crop_and_diagnostics(
     status = process_vehicle(
         record,
         tmp_path / "output",
-        approve_warning=False,
         detection_settings=DetectionSettings(manual_fallback=True),
     )
 
@@ -136,7 +133,6 @@ def test_qwen_perspective_quad_is_applied_before_export(tmp_path, monkeypatch):
     status = process_vehicle(
         record,
         tmp_path / "output",
-        approve_warning=False,
     )
 
     item_dir = tmp_path / "output" / record.size / record.id
@@ -148,11 +144,7 @@ def test_qwen_perspective_quad_is_applied_before_export(tmp_path, monkeypatch):
     )
     assert detection["perspective_quad"] == [list(point) for point in quad]
     assert "parts" not in detection
-    annotation = json.loads(
-        (item_dir / "annotation_points.json").read_text(encoding="utf-8")
-    )
-    assert annotation["is_pickup"] is True
-    assert len(annotation["outline_segments_mm"]) == 3
+    assert (item_dir.parent / f"{record.id}.svg").exists()
 
 
 def test_continue_skips_an_already_generated_id(tmp_path, capsys):
@@ -172,15 +164,7 @@ def test_continue_skips_an_already_generated_id(tmp_path, capsys):
     item_dir.mkdir(parents=True)
     final_svg = output / "TEST" / f"{vehicle_id}.svg"
     final_svg.write_text("keep existing SVG", encoding="utf-8")
-    (item_dir / "annotation_points.json").write_text(
-        json.dumps({
-            "cab_height_mm": 1500,
-            "hood_height_mm": 900,
-            "neck_height_mm": 1000,
-            "bed_height_mm": 1100,
-        }),
-        encoding="utf-8",
-    )
+    (output / "measurements.tsv").write_text("stale", encoding="utf-8")
     image_hash = hashlib.sha256(image_path.read_bytes()).hexdigest()
     (tmp_path / "image_generation_hashes.json").write_text(
         json.dumps({
@@ -197,7 +181,6 @@ def test_continue_skips_an_already_generated_id(tmp_path, capsys):
 
     result = main([
         "--continue",
-        "--measure",
         "--input", str(table),
         "--images", str(tmp_path),
         "--output", str(output),
@@ -215,14 +198,7 @@ def test_continue_skips_an_already_generated_id(tmp_path, capsys):
     assert final_svg.read_text(encoding="utf-8") == "keep existing SVG"
     summary = json.loads((output / "run_summary.json").read_text(encoding="utf-8"))
     assert summary[0]["status"] == "SKIPPED"
-    measurements = (output / "measurements.tsv").read_text(
-        encoding="utf-8-sig"
-    )
-    assert measurements.splitlines()[0] == (
-        "NAME\tSIZE\tL-MM\tW-MM\tH-MM\t"
-        "CAB-H\tHOOD-H\tNECK-H\tBED-H"
-    )
-    assert "Test Truck\tTEST\t6000\t2000\t2000\t1500\t900\t1000\t1100" in measurements
+    assert not (output / "measurements.tsv").exists()
 
 
 def test_continue_flag_uses_a_safe_attribute_name():
@@ -320,12 +296,10 @@ def test_transient_qwen_failure_is_not_cached(tmp_path, monkeypatch):
     assert not (tmp_path / "image_generation_hashes.json").exists()
 
 
-def test_no_measure_is_the_default_cli_mode():
+def test_legacy_flags_are_still_accepted():
     parser = build_parser()
 
-    assert parser.parse_args([]).measure is False
-    assert parser.parse_args(["--no-measure"]).measure is False
-    assert parser.parse_args(["--measure"]).measure is True
+    parser.parse_args(["--no-measure", "--approve-warning"])
 
 
 def test_no_measure_only_exports_crop_svg(tmp_path):
@@ -338,9 +312,7 @@ def test_no_measure_only_exports_crop_svg(tmp_path):
     status = process_vehicle(
         record,
         tmp_path / "output",
-        approve_warning=False,
         reuse_points=True,
-        measure=False,
     )
 
     assert status == "EXPORTED"

@@ -1,24 +1,8 @@
 # Pickup Side Profile Measurement Tool
 
-## 运行模式
+批量读取皮卡侧视图，由 AI 识别主车辆、车头方向和透视校准并紧密裁剪，再按表格中的真实车长和车高生成可直接导入 Adobe Illustrator 的毫米尺寸 SVG，标注车型名称、整车 `LENGTH` 和 `HEIGHT`。
 
-默认使用不测量模式：
-
-```powershell
-python main.py
-# 等同于
-python main.py --no-measure
-```
-
-该模式只定位、校正方向和透视、紧密裁剪，并在 Size 目录直接导出最终 `<id>.svg`，默认标注车型名称、整车 `LENGTH` 和 `HEIGHT`；不会执行局部尺寸测量和比例质检，也不会生成红框、HOOD/CAB/NECK/BED 标注、`annotation_points.json`、单车 `measurements.tsv` 或批次 `measurements.tsv`。同名过程目录中不会再放置 `vehicle.svg`。
-
-如需使用原有的完整测量、红框标注和尺寸结果流程，请显式指定：
-
-```powershell
-python main.py --measure
-```
-
-批量读取皮卡侧视图，由 AI 识别主车辆、车头方向和透视校准并紧密裁剪，再由 Python 从校正后的像素中测量并绘制红色车型结构，最后按 TSV 中的真实车长和车高生成可直接导入 Adobe Illustrator 的毫米尺寸 SVG。工具同时生成尺寸标注、单车过程文件和批次汇总表。
+> 局部尺寸测量（HOOD/CAB/NECK/BED）、比例质检、红框标注和 `measurements.tsv` 已移除；原 `--measure` 参数不再可用，`--no-measure` 和 `--approve-warning` 仍可传入但不起作用。
 
 ## 环境安装
 
@@ -77,7 +61,7 @@ input/images/Ford_F150_Raptor_PK-XL_5908_2200_2027.jpg
 python main.py
 ```
 
-程序将逐车执行 AI 主体定位、方向归一、透视校正和无留白裁剪，然后用 Python 执行结构边缘测量、长高独立缩放、比例质检、红色线框绘制和尺寸计算。AI 不参与 BED/CAB/HOOD 或红色结构线识别。某一辆车失败不会中断整个批次，详情记录在日志和运行汇总中。
+程序将逐车执行 AI 主体定位、方向归一、透视校正和无留白裁剪，然后导出带整车长高标注的 SVG。某一辆车失败不会中断整个批次，详情记录在日志和运行汇总中。
 
 常用命令：
 
@@ -95,25 +79,7 @@ python main.py --input data\vehicles.tsv --images data\images --output result
 python main.py --manual
 ```
 
-## 4. 比例质检
-
-程序比较图片裁剪区域的长高比和车辆真实长高比：
-
-- 误差不超过 3%：自动导出。
-- 误差大于 3% 且不超过 `error_max_percent`：状态为 `WARNING`，记录警告后继续尺寸识别和 SVG 导出。
-- 误差大于 `warning_max_percent` 时，`qc_report.json` 额外记录 `warning_limit_exceeded: true`。
-- 误差大于 `error_max_percent`：状态为 `BLOCKED`，暂停尺寸识别和导出。
-
-阈值在 `config.yaml` 中配置：
-
-```yaml
-quality:
-  pass_max_percent: 3
-  warning_max_percent: 15
-  error_max_percent: 20
-```
-
-## 5. 输出文件
+## 4. 输出文件
 
 每辆车的最终标注 SVG 以 ID 命名，直接保存在 Size 目录；过程文件保存在对应的 ID 子目录：
 
@@ -124,45 +90,31 @@ output/PK-XL/
     ├── source.jpg
     ├── crop_source.png
     ├── orientation.json
-    ├── points.json
-    ├── annotation_points.json
-    ├── qc_report.json
-    └── measurements.tsv
+    ├── detection.json
+    └── points.json
 ```
 
-- `<id>.svg`：Size 目录下的最终交付文件。`--no-measure` 时包含紧密裁剪车辆、车型名称及整车 `LENGTH`、`HEIGHT` 标注；`--measure` 时包含白底、50% 透明车辆图、红色结构线框和完整外置尺寸标注。
-- `vehicle.svg`：仅在 `--measure` 模式下生成于过程目录，包含按真实车长、车高缩放的车辆图片。
+- `<id>.svg`：Size 目录下的最终交付文件，包含紧密裁剪车辆、车型名称及整车 `LENGTH`、`HEIGHT` 标注。
 - `crop_source.png`：紧密裁剪的原始像素，仅作为 SVG 内嵌图源，不需要单独导入工程。
-- `orientation.json`：车头方向识别结果、置信度、翻转状态及各项判断分数。车头在左时，`crop_source.png` 会水平翻转为车头朝右后再进入尺寸识别。
+- `orientation.json`：车头方向识别结果、置信度、翻转状态及各项判断分数。车头在左时，`crop_source.png` 会水平翻转为车头朝右。
 - `points.json`：自动或人工确定的裁剪边界。
 - `detection.json`：AI 返回的主体边界、车头方向和透视校准结果；不包含红色车型结构点。
-- `annotation_points.json`：轮廓、底盘线、车门线等自动测量坐标，内部单位为 mm。
-- `measurements.tsv`：单车详细测量结果。
 
 批次级文件直接保存在 `output/` 根目录：
 
 ```text
 output/
-├── measurements.tsv
 ├── run_summary.json
 └── pickup_measure.log
 ```
 
-汇总表 `output/measurements.tsv` 的列为：
-
-```text
-NAME  SIZE  L-MM  W-MM  H-MM  CAB-H  HOOD-H  NECK-H  BED-H
-```
-
-表格实际使用 Tab 分隔，所有尺寸均为整数毫米，不附带单位文字。
-
-## 6. Illustrator 导入说明
+## 5. Illustrator 导入说明
 
 请导入 Size 目录下的最终 `<id>.svg`；不要把 `crop_source.png` 作为最终工程图导入。SVG 的 `width`、`height` 和 `viewBox` 使用毫米定义，因此 Illustrator 中的物理车长和车高以 TSV 数据为准，与栅格图的 PPI 无关。
 
-Size 目录下的 `<id>.svg` 为了把总长、总高和局部尺寸线放到车辆两侧，画板会比车辆本体更大；车辆本体的尺寸仍然严格等于 TSV 中的 `length_mm × height_mm`。
+Size 目录下的 `<id>.svg` 为了把总长、总高尺寸线放到车辆两侧，画板会比车辆本体更大；车辆本体的尺寸仍然严格等于 TSV 中的 `length_mm × height_mm`。
 
-## 7. 调整标注样式
+## 6. 调整标注样式
 
 在 `config.yaml` 的 `annotation` 节点中调整显示效果：
 
@@ -180,7 +132,7 @@ annotation:
 
 其中线宽和字号均使用毫米。输出目录通过 `config.yaml` 的 `output_dir` 设置，例如 `output_dir: img/output`；相对路径以配置文件所在目录为基准，未配置时使用该目录下的 `output/`。显式传入 `--output` 会覆盖配置，其相对路径以当前工作目录为基准。上文输出结构以 `output/` 为例，日志、汇总文件及续跑检查均使用实际输出目录。图片区通过 `--images` 设置。
 
-## 8. 运行测试
+## 7. 运行测试
 
 ```powershell
 python -m pytest -q

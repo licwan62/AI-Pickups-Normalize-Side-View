@@ -28,24 +28,7 @@ def test_loads_annotation_style(tmp_path):
     assert settings.annotation.font_size_mm == 90
 
 
-def test_loads_quality_thresholds(tmp_path):
-    config = tmp_path / "config.yaml"
-    config.write_text(
-        "quality:\n"
-        "  pass_max_percent: 3\n"
-        "  warning_max_percent: 15\n"
-        "  error_max_percent: 20\n",
-        encoding="utf-8",
-    )
-
-    settings = load_settings(config)
-
-    assert settings.quality.pass_max_percent == 3
-    assert settings.quality.warning_max_percent == 15
-    assert settings.quality.error_max_percent == 20
-
-
-def test_quality_error_threshold_defaults_to_warning_threshold(tmp_path):
+def test_legacy_quality_section_is_ignored(tmp_path):
     config = tmp_path / "config.yaml"
     config.write_text(
         "quality:\n  pass_max_percent: 3\n  warning_max_percent: 15\n",
@@ -54,7 +37,7 @@ def test_quality_error_threshold_defaults_to_warning_threshold(tmp_path):
 
     settings = load_settings(config)
 
-    assert settings.quality.error_max_percent == 15
+    assert not hasattr(settings, "quality")
 
 
 def test_loads_qwen_detection_settings(tmp_path):

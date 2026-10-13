@@ -21,7 +21,3 @@ detection:
   timeout_seconds: 90
   manual_fallback: false
   perspective_correction: false
-quality:
-  pass_max_percent: 3
-  warning_max_percent: 10
-  error_max_percent: 15

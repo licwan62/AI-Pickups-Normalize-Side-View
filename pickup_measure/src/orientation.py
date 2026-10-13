@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 from PIL import Image, ImageOps
 
-from .annotation import _foreground_mask
+from .background import _foreground_mask
 
 
 @dataclass(frozen=True)

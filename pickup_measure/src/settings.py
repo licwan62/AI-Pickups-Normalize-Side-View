@@ -12,13 +12,6 @@ class OutputSettings:
 
 
 @dataclass(frozen=True)
-class QualitySettings:
-    pass_max_percent: float = 3.0
-    warning_max_percent: float = 6.0
-    error_max_percent: float = 6.0
-
-
-@dataclass(frozen=True)
 class DetectionSettings:
     provider: str = "qwen"
     model: str = "qwen3-vl-plus"
@@ -49,7 +42,6 @@ class Settings:
     input_path: Path = Path("input/vehicles.csv")
     output: OutputSettings = OutputSettings()
     annotation: AnnotationStyle = AnnotationStyle()
-    quality: QualitySettings = QualitySettings()
     detection: DetectionSettings = DetectionSettings()
     output_dir: Path = Path("output")
 
@@ -85,30 +77,6 @@ def load_settings(path: Path) -> Settings:
         raise ValueError("annotation.image_opacity must be between 0 and 1")
     if min(annotation.outline_width_mm, annotation.dimension_width_mm, annotation.font_size_mm) <= 0:
         raise ValueError("annotation widths and font size must be positive")
-    quality_payload = payload.get("quality") or {}
-    pass_max_percent = float(quality_payload.get("pass_max_percent", 3.0))
-    warning_max_percent = float(quality_payload.get("warning_max_percent", 6.0))
-    # Older configurations used warning_max_percent as the blocking threshold.
-    error_max_percent = float(
-        quality_payload.get("error_max_percent", warning_max_percent)
-    )
-    quality = QualitySettings(
-        pass_max_percent=pass_max_percent,
-        warning_max_percent=warning_max_percent,
-        error_max_percent=error_max_percent,
-    )
-    if quality.pass_max_percent < 0:
-        raise ValueError("quality.pass_max_percent must not be negative")
-    if quality.warning_max_percent < quality.pass_max_percent:
-        raise ValueError(
-            "quality.warning_max_percent must be greater than or equal to "
-            "quality.pass_max_percent"
-        )
-    if quality.error_max_percent < quality.warning_max_percent:
-        raise ValueError(
-            "quality.error_max_percent must be greater than or equal to "
-            "quality.warning_max_percent"
-        )
     detection_payload = payload.get("detection") or {}
     detection = DetectionSettings(
         provider=str(detection_payload.get("provider", "qwen")).lower(),
@@ -137,6 +105,5 @@ def load_settings(path: Path) -> Settings:
         output_dir=(path.parent / Path(str(payload.get("output_dir", "output")))).resolve(),
         output=OutputSettings(ppi=ppi),
         annotation=annotation,
-        quality=quality,
         detection=detection,
     )

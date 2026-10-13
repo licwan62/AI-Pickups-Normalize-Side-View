@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import csv
 from pathlib import Path
 
 from PIL import Image
@@ -30,12 +29,4 @@ class Exporter:
     def write_json(self, filename: str, payload: object) -> Path:
         path = self.output_dir / filename
         path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-        return path
-
-    def write_measurements(self, payload: dict[str, object]) -> Path:
-        path = self.output_dir / "measurements.tsv"
-        with path.open("w", encoding="utf-8-sig", newline="") as stream:
-            writer = csv.DictWriter(stream, fieldnames=list(payload), delimiter="\t")
-            writer.writeheader()
-            writer.writerow(payload)
         return path
