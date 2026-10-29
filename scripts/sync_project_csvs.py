@@ -11,8 +11,12 @@ from __future__ import annotations
 import argparse
 import csv
 import re
+import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 SUPPORTED_EXTENSIONS = {".avif", ".jpg", ".jpeg", ".png", ".webp"}
@@ -103,6 +107,69 @@ def read_dimensions(path: Path) -> tuple[list[Dimension], dict[str, list[Dimensi
     return dimensions, by_name
 
 
+def read_master_dimensions(
+    config_path: Path,
+    *,
+    force_refresh: bool = False,
+) -> tuple[list[Dimension], dict[str, list[Dimension]]]:
+    """Load dimensions through the same source resolution as the CLI."""
+
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    from pickup_measure.src.master_table import load_master_table, resolve_source_files
+    from pickup_measure.src.settings import load_settings
+
+    settings = load_settings(config_path)
+    paths = resolve_source_files(settings.master_table)
+    table = load_master_table(
+        settings.master_table,
+        force_refresh=force_refresh,
+    )
+    for path in paths:
+        print(f"master: {path.as_posix()}")
+    if not paths:
+        cache_label = table.cache_path.as_posix() if table.cache_path else "unknown"
+        print(f"master: cache {cache_label}")
+    dimensions: list[Dimension] = []
+    by_name: dict[str, list[Dimension]] = {}
+    for vehicle in table.vehicles:
+        item = Dimension(
+            vehicle.name,
+            str(vehicle.length_mm),
+            str(vehicle.width_mm),
+            str(vehicle.height_mm),
+        )
+        dimensions.append(item)
+        by_name.setdefault(normalize(item.name), []).append(item)
+    if not dimensions:
+        raise ValueError("Master table sources contained no usable dimensions")
+    return dimensions, by_name
+
+
+def merge_dimensions(
+    sources: list[tuple[Path, str]],
+) -> tuple[list[Dimension], dict[str, list[Dimension]]]:
+    """Read one or more master CSVs and drop duplicate DIMENSION-ID rows."""
+
+    dimensions: list[Dimension] = []
+    seen: set[tuple[str, str, str, str]] = set()
+    by_name: dict[str, list[Dimension]] = {}
+    for path, label in sources:
+        items, _ = read_dimensions(path)
+        for item in items:
+            key = (item.name, item.length_mm, item.width_mm, item.height_mm)
+            if key in seen:
+                continue
+            seen.add(key)
+            dimensions.append(item)
+            by_name.setdefault(normalize(item.name), []).append(item)
+        if len(items) == 0:
+            print(f"warning: {label} contained no usable dimensions")
+    if not dimensions:
+        raise ValueError("Master table sources contained no usable dimensions")
+    return dimensions, by_name
+
+
 def existing_aliases(project_dir: Path) -> dict[str, Dimension]:
     aliases: dict[str, Dimension] = {}
     for path in sorted(project_dir.glob("*.csv")):
@@ -172,8 +239,28 @@ def render_csv(rows: list[dict[str, str]]) -> str:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--images", type=Path, default=Path("img/input"))
-    parser.add_argument("--dimensions", type=Path, default=Path("data/dimensions/全量表_汇总.csv"))
+    parser.add_argument(
+        "--dimensions",
+        type=Path,
+        default=None,
+        help=(
+            "Read this master CSV instead of the sources configured in "
+            "config.yaml (can be repeated)"
+        ),
+        action="append",
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=Path("config.yaml"),
+        help="Configuration file used when --dimensions is omitted",
+    )
     parser.add_argument("--projects", type=Path, default=Path("data/projects"))
+    parser.add_argument(
+        "--refresh-master",
+        action="store_true",
+        help="Rebuild the configured master table cache before matching",
+    )
     parser.add_argument("--apply", action="store_true", help="write generated project CSV files")
     return parser.parse_args()
 
@@ -182,14 +269,25 @@ def main() -> int:
     args = parse_args()
     root = Path.cwd().resolve()
     images_dir = (root / args.images).resolve()
-    dimensions_path = (root / args.dimensions).resolve()
     projects_dir = (root / args.projects).resolve()
     if not images_dir.is_dir():
         raise FileNotFoundError(images_dir)
-    if not dimensions_path.is_file():
-        raise FileNotFoundError(dimensions_path)
 
-    dimensions, by_name = read_dimensions(dimensions_path)
+    if args.dimensions:
+        sources = [(root / path).resolve() for path in args.dimensions]
+        missing = [path for path in sources if not path.is_file()]
+        if missing:
+            raise FileNotFoundError(missing[0])
+        sources = [(path, path.as_posix()) for path in sources]
+        for path, label in sources:
+            print(f"master: {label}")
+        dimensions, by_name = merge_dimensions(sources)
+    else:
+        config_path = (root / args.config).resolve()
+        dimensions, by_name = read_master_dimensions(
+            config_path,
+            force_refresh=args.refresh_master,
+        )
     aliases = existing_aliases(projects_dir) if projects_dir.is_dir() else {}
     generated: dict[str, list[dict[str, str]]] = {}
     warnings: list[str] = []

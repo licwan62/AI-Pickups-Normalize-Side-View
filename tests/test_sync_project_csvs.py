@@ -20,6 +20,7 @@ def write_dimensions(path: Path) -> None:
 def run_sync(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, str(SCRIPT), *args], cwd=root, text=True,
+        encoding="utf-8", errors="replace",
         capture_output=True, check=False,
     )
 
@@ -104,3 +105,32 @@ def test_does_not_match_year_outside_master_range(tmp_path):
     assert result.returncode == 0
     output = (tmp_path / "data/projects/custom.csv").read_text()
     assert '"2015 Tesla Model X","custom","","","",' in output
+
+
+def test_uses_master_table_sources_from_config(tmp_path):
+    source = tmp_path / "nas/A/全量/全量表.csv"
+    source.parent.mkdir(parents=True)
+    source.write_text(
+        "DIMENSION-ID,L-MM,W-MM,H-MM\n"
+        "Tesla Model X SUV 2016-2026 US,5057,2004,1679\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "config.yaml").write_text(
+        "master_table:\n"
+        "  source: nas\n"
+        "  patterns:\n"
+        "    - '*/全量/全量表.csv'\n"
+        "  cache_path: cache/master.csv\n"
+        "  refresh: auto\n",
+        encoding="utf-8",
+    )
+    image = tmp_path / "img/input/custom/Tesla Model X SUV 2016-2026.jpg"
+    image.parent.mkdir(parents=True)
+    image.touch()
+
+    result = run_sync(tmp_path, "--config", "config.yaml", "--apply")
+
+    assert result.returncode == 0, result.stderr
+    output = (tmp_path / "data/projects/custom.csv").read_text(encoding="utf-8")
+    assert "Tesla Model X SUV 2016-2026" in output
+    assert (tmp_path / "cache/master.csv").is_file()

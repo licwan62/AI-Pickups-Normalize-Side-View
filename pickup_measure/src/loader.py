@@ -25,14 +25,22 @@ class VehicleRecord:
     size: str = "UNCLASSIFIED"
 
 
+def sanitize_component(value: str) -> str:
+    """Make a single value safe for use inside a vehicle ID."""
+
+    cleaned = re.sub(r"\s+", "_", str(value).strip())
+    cleaned = UNSAFE_FILENAME_CHARS.sub("_", cleaned).rstrip(". ")
+    return cleaned or "empty"
+
+
+def generate_vehicle_id(*components: str) -> str:
+    """Join already ordered values into the pipeline's vehicle ID format."""
+
+    return "_".join(sanitize_component(component) for component in components)
+
+
 def _generate_vehicle_id(row: pd.Series, columns: list[str]) -> str:
-    components: list[str] = []
-    for column in columns:
-        value = str(row[column]).strip()
-        value = re.sub(r"\s+", "_", value)
-        value = UNSAFE_FILENAME_CHARS.sub("_", value).rstrip(". ")
-        components.append(value or "empty")
-    return "_".join(components)
+    return generate_vehicle_id(*(row[column] for column in columns))
 
 
 def _resolve_image_path(raw_path: str, tsv_path: Path) -> Path:

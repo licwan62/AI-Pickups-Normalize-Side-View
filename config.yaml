@@ -21,3 +21,13 @@ detection:
   timeout_seconds: 90
   manual_fallback: false
   perspective_correction: false
+master_table:
+  source: '\\NAS8824B4\Public\PQData\pub_all_cars_data\data\基础数据'
+  patterns:
+    - "*/全量/全量表.csv"
+  cache_path: data/cache/master_vehicles.csv
+  refresh: auto
+  fallback_size: UNCLASSIFIED
+  preferred_markets: [US, EU, RU]
+  min_score: 0.62
+  identify_prompt_file: promting_identify.md

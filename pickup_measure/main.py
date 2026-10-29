@@ -26,6 +26,7 @@ from .src.orientation import normalize_front_to_right
 from .src.qwen_detector import QwenVehicleDetector
 from .src.renderer import render_dimensioned_vehicle_svg
 from .src.settings import AnnotationStyle, DetectionSettings, load_settings
+from .src.side_view import run_side_view
 
 
 LOGGER = logging.getLogger("pickup_measure")
@@ -699,6 +700,57 @@ def process_vehicle(
     return "EXPORTED"
 
 
+def run_side_view_cli(args: argparse.Namespace, settings) -> int:
+    try:
+        result = run_side_view(
+            args.side_view,
+            settings,
+            args.output,
+            market=args.market,
+            allow_ambiguous=args.allow_ambiguous,
+            force_refresh=args.refresh_master,
+            render=not args.match_only,
+        )
+    except Exception as exc:
+        LOGGER.exception("Side-view processing failed")
+        terminal_print(f"❌ SIDE_VIEW [{exc}]")
+        return 1
+
+    vehicle = result.selected.vehicle if result.selected else None
+    if result.match_path is not None:
+        LOGGER.info("Side-view match written to %s", result.match_path)
+    if result.identity is not None:
+        terminal_print(
+            f"  identified: {result.identity.query} "
+            f"(confidence {result.identity.confidence:.2f})"
+        )
+    if result.status in {"EXPORTED", "MATCHED"} and vehicle is not None:
+        if result.svg_path is not None:
+            terminal_print(f"✅ {vehicle.dimension_id} -> {result.svg_path}")
+        else:
+            terminal_print(
+                f"✅ {vehicle.dimension_id} "
+                f"[{vehicle.length_mm} x {vehicle.width_mm} x {vehicle.height_mm} mm]"
+            )
+        if result.warning:
+            terminal_print(f"  warning: {result.warning}")
+        return 0
+
+    terminal_print(f"❌ SIDE_VIEW {result.status} [{result.error}]")
+    if result.match is not None:
+        for index, candidate in enumerate(result.match.candidates[:5], start=1):
+            terminal_print(
+                f"  {index}. {candidate.score:.3f} "
+                f"{candidate.vehicle.dimension_id} "
+                f"[{candidate.vehicle.length_mm} x "
+                f"{candidate.vehicle.width_mm} x "
+                f"{candidate.vehicle.height_mm} mm]"
+            )
+    if result.match_path is not None:
+        terminal_print(f"  details: {result.match_path}")
+    return 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Generate true-size pickup side-profile SVG files.")
     parser.add_argument(
@@ -749,6 +801,41 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Match images and update the input CSV file(s) before processing",
     )
+    parser.add_argument(
+        "--side-view",
+        type=Path,
+        default=None,
+        metavar="IMAGE",
+        help=(
+            "Process one side-view image: identify the vehicle, match the "
+            "master table, then crop and render"
+        ),
+    )
+    parser.add_argument(
+        "--market",
+        type=str.upper,
+        choices=["US", "EU", "CN", "JP", "KR", "RU"],
+        default=None,
+        help="Market filter for --side-view (also read from the filename)",
+    )
+    parser.add_argument(
+        "--allow-ambiguous",
+        action="store_true",
+        help=(
+            "With --side-view, render the best row even when matching rows "
+            "have different length/height values"
+        ),
+    )
+    parser.add_argument(
+        "--refresh-master",
+        action="store_true",
+        help="Rebuild the master-table cache before matching",
+    )
+    parser.add_argument(
+        "--match-only",
+        action="store_true",
+        help="With --side-view, write match.json without cropping or rendering",
+    )
     # Accepted so existing commands keep working; measurement was removed.
     parser.add_argument(
         "--approve-warning",
@@ -770,6 +857,8 @@ def main(argv: list[str] | None = None) -> int:
         settings = load_settings(args.config)
         args.output = args.output or settings.output_dir
         configure_logging(args.output / "pickup_measure.log", args.verbose)
+        if args.side_view is not None:
+            return run_side_view_cli(args, settings)
         input_path = args.input or settings.input_path
         if args.sync_vehicles:
             if input_path.is_dir():

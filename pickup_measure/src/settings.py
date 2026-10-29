@@ -1,9 +1,17 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+import os
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Mapping
 
 import yaml
+
+
+DEFAULT_MASTER_TABLE_SOURCE = (
+    r"\\NAS8824B4\Public\PQData\pub_all_cars_data\data\基础数据"
+)
+DEFAULT_MASTER_TABLE_PATTERNS = ("*/全量/全量表.csv",)
 
 
 @dataclass(frozen=True)
@@ -19,10 +27,26 @@ class DetectionSettings:
         "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
     )
     api_key: str = ""
+    api_key_env: str = "DASHSCOPE_API_KEY"
     prompt_file: Path = Path("promting.md")
     timeout_seconds: float = 90.0
     manual_fallback: bool = False
     perspective_correction: bool = False
+
+
+@dataclass(frozen=True)
+class MasterTableSettings:
+    """Locations and matching rules for the authoritative vehicle table."""
+
+    source: Path = Path(DEFAULT_MASTER_TABLE_SOURCE)
+    patterns: tuple[str, ...] = DEFAULT_MASTER_TABLE_PATTERNS
+    cache_path: Path = Path("data/cache/master_vehicles.csv")
+    refresh: str = "auto"
+    fallback_size: str = "UNCLASSIFIED"
+    preferred_markets: tuple[str, ...] = ("US", "EU", "RU")
+    min_score: float = 0.62
+    identify_prompt_file: Path = Path("promting_identify.md")
+    columns: Mapping[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -43,7 +67,28 @@ class Settings:
     output: OutputSettings = OutputSettings()
     annotation: AnnotationStyle = AnnotationStyle()
     detection: DetectionSettings = DetectionSettings()
+    master_table: MasterTableSettings = MasterTableSettings()
     output_dir: Path = Path("output")
+
+
+def _resolve_config_path(config_path: Path, value: object) -> Path:
+    candidate = Path(str(value)).expanduser()
+    if candidate.is_absolute():
+        return candidate
+    return (config_path.parent / candidate).resolve()
+
+
+def _string_tuple(value: object, default: tuple[str, ...]) -> tuple[str, ...]:
+    if value is None:
+        return default
+    if isinstance(value, str):
+        values = (value,)
+    elif isinstance(value, (list, tuple)):
+        values = tuple(str(item) for item in value)
+    else:
+        raise ValueError("master_table.patterns must be a string or a list")
+    cleaned = tuple(item.strip() for item in values if str(item).strip())
+    return cleaned or default
 
 
 def load_settings(path: Path) -> Settings:
@@ -78,6 +123,11 @@ def load_settings(path: Path) -> Settings:
     if min(annotation.outline_width_mm, annotation.dimension_width_mm, annotation.font_size_mm) <= 0:
         raise ValueError("annotation widths and font size must be positive")
     detection_payload = payload.get("detection") or {}
+    api_key_env = str(
+        detection_payload.get("api_key_env", "DASHSCOPE_API_KEY")
+    ).strip()
+    configured_api_key = str(detection_payload.get("api_key", "")).strip()
+    api_key = configured_api_key or os.environ.get(api_key_env, "").strip()
     detection = DetectionSettings(
         provider=str(detection_payload.get("provider", "qwen")).lower(),
         model=str(detection_payload.get("model", "qwen3-vl-plus")),
@@ -87,7 +137,8 @@ def load_settings(path: Path) -> Settings:
                 "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
             )
         ),
-        api_key=str(detection_payload.get("api_key", "")),
+        api_key=api_key,
+        api_key_env=api_key_env,
         prompt_file=(
             path.parent
             / Path(str(detection_payload.get("prompt_file", "promting.md")))
@@ -100,10 +151,53 @@ def load_settings(path: Path) -> Settings:
         raise ValueError("detection.provider must be qwen")
     if detection.timeout_seconds <= 0:
         raise ValueError("detection.timeout_seconds must be positive")
+
+    master_payload = payload.get("master_table") or {}
+    refresh = str(master_payload.get("refresh", "auto")).lower()
+    if refresh not in {"auto", "always", "never"}:
+        raise ValueError("master_table.refresh must be auto, always, or never")
+    min_score = float(master_payload.get("min_score", 0.62))
+    if not 0 <= min_score <= 1:
+        raise ValueError("master_table.min_score must be between 0 and 1")
+    configured_columns = master_payload.get("columns") or {}
+    if not isinstance(configured_columns, dict):
+        raise ValueError("master_table.columns must be a mapping")
+    master_table = MasterTableSettings(
+        source=_resolve_config_path(
+            path,
+            master_payload.get("source", DEFAULT_MASTER_TABLE_SOURCE),
+        ),
+        patterns=_string_tuple(
+            master_payload.get("patterns"),
+            DEFAULT_MASTER_TABLE_PATTERNS,
+        ),
+        cache_path=_resolve_config_path(
+            path,
+            master_payload.get("cache_path", "data/cache/master_vehicles.csv"),
+        ),
+        refresh=refresh,
+        fallback_size=str(
+            master_payload.get("fallback_size", "UNCLASSIFIED")
+        ).strip() or "UNCLASSIFIED",
+        preferred_markets=_string_tuple(
+            master_payload.get("preferred_markets"),
+            ("US", "EU", "RU"),
+        ),
+        min_score=min_score,
+        identify_prompt_file=_resolve_config_path(
+            path,
+            master_payload.get("identify_prompt_file", "promting_identify.md"),
+        ),
+        columns={
+            str(key): str(value)
+            for key, value in configured_columns.items()
+        },
+    )
     return Settings(
         input_path=input_path,
         output_dir=(path.parent / Path(str(payload.get("output_dir", "output")))).resolve(),
         output=OutputSettings(ppi=ppi),
         annotation=annotation,
         detection=detection,
+        master_table=master_table,
     )
